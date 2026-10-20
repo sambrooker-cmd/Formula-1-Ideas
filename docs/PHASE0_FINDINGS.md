@@ -102,8 +102,20 @@ The cache file should come to roughly 40–60 MB per race. The raw JSON response
 3. **Multi-window sync.** Windows send each other only clock *changes* (play, pause, seek, speed) over `BroadcastChannel`, plus an occasional heartbeat from the window that owns the clock. They don't stream frames. Each window has its own copy of the replay pack (cached by the browser), so the panels stay independent. The same messages can later travel over a LAN WebSocket, and live mode (Phase 4) only changes what fills the store.
 4. **Track map.** Draw the precomputed outline once onto a Canvas layer, then draw the 20 dots on a second canvas every frame. That's cheap even at 60 fps.
 
+## Wider landscape (desk research, 20 Oct 2026)
+
+These points affect the brief:
+
+- **FastF1 is no longer a free option.** Since about 14–15 Oct 2026, F1's live-timing static archive (FastF1's data source) returns HTTP 401 without an F1 TV Access login. FastF1's maintainer has confirmed this. OpenF1 still serves 2023–2026 for free, so the brief's plan of OpenF1 first and FastF1 optional still works. Drop FastF1 from Phase 5 unless you have F1 TV.
+- **OpenF1's free tier is reportedly blocked from 30 minutes before a session until 30 minutes after it** (not verified). The ingest should detect this and wait instead of retrying. The next window is Austin FP1, 23 Oct 2026, 17:30 UTC.
+- **There is no free, terms-compliant source of live car positions.** F1's own live feed stopped sending positions and telemetry to unauthenticated clients in 2025, so Phase 4 does need the OpenF1 sponsor tier.
+- **2026 data has `drs = null`** (DRS was removed for 2026). The telemetry panel should hide DRS for 2026 sessions.
+- **Optional track detail:** `meetings.circuit_info_url` points to an unofficial MultiViewer circuit API that gives corner numbers, a rotation angle and pit-loss times in the same x/y frame as `location`. It's undocumented, and it silently returns an older year when the requested year is missing. Nice to have, not a dependency.
+- **Branding:** don't use F1 logos or official graphics (which includes driver headshots), and don't put "F1" in the app name. Add the standard footer: "This website is unofficial and is not associated in any way with the Formula 1 companies. F1, FORMULA ONE, FORMULA 1, FIA FORMULA ONE WORLD CHAMPIONSHIP, GRAND PRIX and related marks are trade marks of Formula One Licensing B.V." F1's guidelines also discourage reproducing "substantial pieces" of timing data, which is another reason to keep this private and local.
+- **Similar projects to borrow ideas from:** f1-dash (live web dashboard, AGPL), undercut-f1 (terminal timing and replay, GPL), f1-race-replay (Python replay on a track map), MultiViewer (closed-source F1 TV multi-window player).
+
 ## Open questions for you
 
-1. **Stack:** I suggest **Node (Fastify) with better-sqlite3**, so the whole project is TypeScript and runs from one `npm run dev`. FastAPI would only make sense if we want FastF1 soon. OK to go with Node?
+1. **Stack:** I suggest **Node (Fastify) with better-sqlite3**, so the whole project is TypeScript and runs from one `npm run dev`. FastAPI would only make sense if we wanted FastF1, which now needs F1 TV (see above). OK to go with Node?
 2. **Safety-car test race:** I'd add a second race that had a safety car for Phase 2 testing of track status. Are you happy for me to choose one?
 3. **Replay start:** should the replay default to lights out, with the pre-race period still reachable by scrubbing?
