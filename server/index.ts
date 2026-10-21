@@ -6,10 +6,11 @@ import path from 'node:path';
 import type { WebSocket } from 'ws';
 import { listCachedSessions } from './db.ts';
 import { ensurePack } from './pack.ts';
-import { ingestSession, type Progress } from './ingest.ts';
 import { get } from './openf1.ts';
 import zlib from 'node:zlib';
-import { season } from './season.ts';
+import { season, standingsBefore } from './season.ts';
+import { enqueueIngest, recentJobs } from './jobs.ts';
+import { autoStatus, readSettings, startAutoDownload, writeSettings } from './autodownload.ts';
 import { addClient, liveMeta, liveSamples, liveState, startLiveFeed, startSimulation, stopSimulation } from './live.ts';
 
 const PORT = Number(process.env.PORT ?? 8787);
@@ -56,37 +57,21 @@ app.get<{ Querystring: { meeting_key: string } }>('/api/catalogue/sessions', asy
   cachedGet('sessions', `meeting_key=${Number(req.query.meeting_key)}`),
 );
 
-// ---- ingest jobs (one at a time, so the rate limit is never shared) --------
-
-interface Job {
-  sessionKey: number;
-  state: 'running' | 'done' | 'error';
-  progress: Progress | null;
-  error?: string;
-}
-const jobs: Job[] = [];
-let running: Promise<void> = Promise.resolve();
+// ---- download jobs and auto-download ------------------------------------------
 
 app.post<{ Body: { sessionKey: number } }>('/api/ingest', async (req, reply) => {
   const sessionKey = Number(req.body?.sessionKey);
   if (!sessionKey) return reply.code(400).send({ error: 'sessionKey required' });
-  const existing = jobs.find((j) => j.sessionKey === sessionKey && j.state === 'running');
-  if (existing) return existing;
-  const job: Job = { sessionKey, state: 'running', progress: null };
-  jobs.push(job);
-  running = running.then(() =>
-    ingestSession(sessionKey, (p) => (job.progress = p)).then(
-      () => void (job.state = 'done'),
-      (err) => {
-        job.state = 'error';
-        job.error = (err as Error).message;
-      },
-    ),
-  );
-  return job;
+  return enqueueIngest(sessionKey);
 });
 
-app.get('/api/ingest', async () => jobs.slice(-10));
+app.get('/api/ingest', async () => recentJobs());
+
+app.get('/api/settings', async () => ({ ...readSettings(), auto: autoStatus }));
+app.post<{ Body: { autoDownload?: boolean } }>('/api/settings', async (req) => {
+  const patch = typeof req.body?.autoDownload === 'boolean' ? { autoDownload: req.body.autoDownload } : {};
+  return { ...writeSettings(patch), auto: autoStatus };
+});
 
 // ---- season calendar & standings (Jolpica) --------------------------------
 
@@ -96,6 +81,14 @@ app.get<{ Querystring: { year?: string } }>('/api/season', async (req, reply) =>
     return await season(year);
   } catch (err) {
     return reply.code(502).send({ error: `Couldn't load the ${year} season: ${(err as Error).message}` });
+  }
+});
+
+app.get<{ Querystring: { year: string; date: string; kind?: string } }>('/api/standings-before', async (req, reply) => {
+  try {
+    return await standingsBefore(Number(req.query.year), req.query.date, req.query.kind === 'sprint' ? 'sprint' : 'race');
+  } catch (err) {
+    return reply.code(502).send({ error: (err as Error).message });
   }
 });
 
@@ -176,4 +169,5 @@ if ((process.env.NODE_ENV === 'production' || process.argv.includes('--productio
 
 await app.listen({ port: PORT, host: '0.0.0.0' });
 void startLiveFeed();
+startAutoDownload();
 console.log(`Pit wall API listening on http://localhost:${PORT}`);

@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState, useSyncExternalStore } from 'react';
 import { clock, getLink, now, subscribeLink, wallNow } from '../sync/clock';
 import { useNow, useSynced } from '../hooks';
 import type { SessionData, TrackStatusKind } from '../data/session';
+import { AlertToggles } from './Alerts';
 import { formatClock, leaderLap, trackStatusAt } from '../data/state';
 
 const SPEEDS = [1, 2, 4, 8, 16];
@@ -145,6 +146,7 @@ export function PlaybackBar({ data, compact = false }: { data: SessionData; comp
         · <b>{formatClock(sinceStart)}</b>
       </span>
       <LinkChip />
+      {!compact && <AlertToggles />}
       {data.live && <TvDelay data={data} compact={compact} />}
       {!compact && (
         <>

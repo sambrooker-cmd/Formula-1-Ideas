@@ -5,6 +5,8 @@ import { clock, getState, now } from '../sync/clock';
 import { useElementSize, useNow } from '../hooks';
 import { Panel } from './Panel';
 import { StatusPill } from './PlaybackBar';
+import { predictPit, type PitPrediction } from '../data/pitstop';
+import { useSynced } from '../hooks';
 
 type Pt = [number, number];
 interface Rect {
@@ -118,6 +120,28 @@ export function TrackMap({ data, area }: { data: SessionData; area?: string }) {
 
   const toScreen = useMemo(() => fitTransform(outline, size.width, size.height, rotation), [outline, size.width, size.height, rotation]);
 
+  // Pit stop predictor (remembered per browser): ghost car where the selected driver would rejoin.
+  const { selected } = useSynced();
+  const [pitMode, setPitMode] = useState(() => {
+    try {
+      return localStorage.getItem('pitwall.pitmode') === '1';
+    } catch {
+      return false;
+    }
+  });
+  const togglePitMode = () => {
+    setPitMode(!pitMode);
+    try {
+      localStorage.setItem('pitwall.pitmode', pitMode ? '0' : '1');
+    } catch {
+      // ignore
+    }
+  };
+  const isRace = data.meta.session.type === 'Race';
+  const prediction: PitPrediction | null = pitMode && isRace && selected[0] != null ? predictPit(data, selected[0], t) : null;
+  const predictionRef = useRef<PitPrediction | null>(null);
+  predictionRef.current = prediction;
+
   // Draw loop: runs every animation frame, outside React.
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -147,6 +171,8 @@ export function TrackMap({ data, area }: { data: SessionData; area?: string }) {
     const draw = () => {
       const t = now();
       const { selected } = getState();
+      const dotRectsExtra: Rect[] = [];
+      let ghostLabel: { x: number; y: number; text: string; colour: string } | null = null;
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
       ctx.clearRect(0, 0, size.width, size.height);
       ctx.lineJoin = 'round';
@@ -190,13 +216,51 @@ export function TrackMap({ data, area }: { data: SessionData; area?: string }) {
         ctx.stroke();
       }
 
+      // Pit predictor ghost: where the leader was `after` seconds ago.
+      const pred = predictionRef.current;
+      if (pred && pred.leader != null) {
+        const ls = data.samples.get(pred.leader);
+        const gp = ls ? carPosition(ls, t - pred.after * 1000) : null;
+        const d = data.drivers.get(pred.driver);
+        if (gp && d) {
+          const [gx, gy] = toScreen(gp.x, gp.y);
+          ctx.globalAlpha = 1;
+          ctx.setLineDash([3, 3]);
+          ctx.lineWidth = 2.5;
+          ctx.strokeStyle = d.colour;
+          ctx.beginPath();
+          ctx.arc(gx, gy, 10, 0, Math.PI * 2);
+          ctx.stroke();
+          ctx.setLineDash([]);
+          dotRectsExtra.push({ x: gx - 11, y: gy - 11, w: 22, h: 22 });
+          ghostLabel = { x: gx, y: gy, text: `${d.code} if pits`, colour: d.colour };
+        }
+      }
+
       // Labels go on top of every dot. Placed in priority order (selected, then race order),
       // each takes the first spot that doesn't cover another label or car; if it has to sit
       // away from its car, a thin line points back to it.
       ctx.font = '700 11px Inter, system-ui, sans-serif';
       ctx.textBaseline = 'middle';
       const placed: Rect[] = [];
-      const dotRects: Rect[] = cars.map((c) => ({ x: c.x - c.r, y: c.y - c.r, w: c.r * 2, h: c.r * 2 }));
+      if (ghostLabel) {
+        ctx.font = '700 11px Inter, system-ui, sans-serif';
+        const w = ctx.measureText(ghostLabel.text).width + 8;
+        const rect = { x: ghostLabel.x + 13, y: ghostLabel.y - 8, w, h: 16 };
+        ctx.fillStyle = '#07090dd9';
+        ctx.beginPath();
+        ctx.roundRect(rect.x, rect.y, rect.w, rect.h, 4);
+        ctx.fill();
+        ctx.strokeStyle = ghostLabel.colour;
+        ctx.setLineDash([3, 2]);
+        ctx.stroke();
+        ctx.setLineDash([]);
+        ctx.fillStyle = '#e8edf3';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(ghostLabel.text, rect.x + 4, rect.y + 8.5);
+        placed.push(rect);
+      }
+      const dotRects: Rect[] = [...cars.map((c) => ({ x: c.x - c.r, y: c.y - c.r, w: c.r * 2, h: c.r * 2 })), ...dotRectsExtra];
       const byPriority = [...cars].sort((a, b) => Number(b.sel) - Number(a.sel) || a.pos - b.pos);
       for (const c of byPriority) {
         const w = ctx.measureText(c.d.code).width + 8;
@@ -272,6 +336,15 @@ export function TrackMap({ data, area }: { data: SessionData; area?: string }) {
       extra={
         <>
           <span>{data.meta.session.circuit}</span>
+          {isRace && (
+            <button
+              className={'icon-btn' + (pitMode ? ' active' : '')}
+              onClick={togglePitMode}
+              title="Pit stop predictor: shows where the selected driver would rejoin if they pitted now"
+            >
+              🔧 Pit predictor
+            </button>
+          )}
           <button className="icon-btn" onClick={rotate} title="Rotate the map (cycles 45° steps, then back to auto-fit)">
             ↻ {rotation == null ? 'auto' : rotation + '°'}
           </button>
@@ -290,6 +363,15 @@ export function TrackMap({ data, area }: { data: SessionData; area?: string }) {
         )}
         <StatusPill data={data} t={t} />
       </div>
+      {pitMode && isRace && (
+        <div className="pit-box">
+          {prediction ? (
+            <PitSummary data={data} p={prediction} />
+          ) : (
+            <span className="muted">Select a driver (tap the tower or a car) to see where they'd rejoin if they pitted now.</span>
+          )}
+        </div>
+      )}
       {w && (
         <div className="weather" style={{ position: 'absolute', left: 12, bottom: 10, pointerEvents: 'none' }}>
           <span>AIR <b>{w.air.toFixed(1)}°</b></span>
@@ -303,5 +385,25 @@ export function TrackMap({ data, area }: { data: SessionData; area?: string }) {
         </div>
       )}
     </Panel>
+  );
+}
+
+export function PitSummary({ data, p }: { data: SessionData; p: PitPrediction }) {
+  const code = (n: number) => data.drivers.get(n)?.code ?? String(n);
+  const cheap = p.status.startsWith('SC') || p.status.startsWith('VSC');
+  return (
+    <>
+      <div>
+        If <b style={{ color: data.drivers.get(p.driver)?.colour }}>{code(p.driver)}</b> pits now: rejoins <b>P{p.position}</b>
+      </div>
+      <div className="muted num" style={{ fontSize: 12 }}>
+        {p.ahead && <>{p.ahead.gap.toFixed(1)} s behind {code(p.ahead.driver)}</>}
+        {p.ahead && p.behind && ' · '}
+        {p.behind && <>{p.behind.gap.toFixed(1)} s ahead of {code(p.behind.driver)}</>}
+      </div>
+      <div className="dim" style={{ fontSize: 11 }}>
+        Stop costs ~{p.loss.toFixed(1)} s{cheap ? ' (cheaper under the Safety Car)' : ''}
+      </div>
+    </>
   );
 }

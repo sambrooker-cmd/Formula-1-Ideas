@@ -18,7 +18,7 @@ interface Cached {
 
 interface Job {
   sessionKey: number;
-  state: 'running' | 'done' | 'error';
+  state: 'queued' | 'running' | 'done' | 'error';
   progress: { done: number; total: number; step: string } | null;
   error?: string;
 }
@@ -46,7 +46,7 @@ export function Home() {
       const list = await getJson<Job[]>('/api/ingest').catch(() => []);
       if (stop) return;
       setJobs(list);
-      if (list.some((j) => j.state === 'running')) setTimeout(poll, 1000);
+      if (list.some((j) => j.state === 'running' || j.state === 'queued')) setTimeout(poll, 1000);
       else refresh();
     };
     poll();
@@ -180,7 +180,7 @@ function SeasonCard({ jobs, onOpen, onDownload }: { jobs: Job[]; onOpen: (key: n
   }, []);
 
   const next = season?.races.find((r) => Date.parse(r.start) + 3 * 3600e3 > now);
-  const downloading = new Set(jobs.filter((j) => j.state === 'running').map((j) => j.sessionKey));
+  const downloading = new Set(jobs.filter((j) => j.state === 'running' || j.state === 'queued').map((j) => j.sessionKey));
   const fmtDate = (iso: string) => new Date(iso).toLocaleDateString(undefined, { day: 'numeric', month: 'short' });
   const fmtWhen = (iso: string) =>
     new Date(iso).toLocaleString(undefined, { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
@@ -298,12 +298,35 @@ function SeasonCard({ jobs, onOpen, onDownload }: { jobs: Job[]; onOpen: (key: n
               </table>
             </div>
           </div>
+          <AutoDownloadToggle />
           <div className="dim" style={{ fontSize: 11, marginTop: 10 }}>
             Calendar, results and standings from Jolpica (free). Times shown in your local time zone.
           </div>
         </>
       )}
     </section>
+  );
+}
+
+/** Switch for downloading each race automatically once it has finished. */
+function AutoDownloadToggle() {
+  const [on, setOn] = useState<boolean | null>(null);
+  useEffect(() => {
+    getJson<{ autoDownload: boolean }>('/api/settings').then((s) => setOn(s.autoDownload), () => setOn(false));
+  }, []);
+  const set = async (next: boolean) => {
+    setOn(next);
+    await fetch('/api/settings', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ autoDownload: next }) });
+  };
+  if (on == null) return null;
+  return (
+    <label className="auto-dl">
+      <input type="checkbox" checked={on} onChange={(e) => set(e.target.checked)} />
+      <span>
+        <b>Download new races automatically</b>
+        <span className="muted"> · each new race is fetched about 2 hours after it finishes, while Pit Wall is running (earlier races: use their Download buttons)</span>
+      </span>
+    </label>
   );
 }
 
@@ -499,7 +522,8 @@ function IngestCard({ jobs, onStarted }: { jobs: Job[]; onStarted: (j: Job) => v
         <div key={j.sessionKey + j.state} style={{ marginTop: 12 }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12 }}>
             <span>
-              Session {j.sessionKey}: {j.state === 'running' ? j.progress?.step ?? 'starting' : j.state === 'done' ? 'done ✓' : 'failed'}
+              Session {j.sessionKey}:{' '}
+              {j.state === 'queued' ? 'waiting its turn' : j.state === 'running' ? j.progress?.step ?? 'starting' : j.state === 'done' ? 'done ✓' : 'failed'}
             </span>
             <span className="num muted">{j.progress ? `${j.progress.done}/${j.progress.total}` : ''}</span>
           </div>

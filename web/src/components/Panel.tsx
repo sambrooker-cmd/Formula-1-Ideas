@@ -8,6 +8,8 @@ export function Panel(props: {
   area?: string;
   popout?: string;
   extra?: ReactNode;
+  /** More header controls, after `extra`. */
+  extraAfter?: ReactNode;
   children: ReactNode;
   bodyClass?: string;
 }) {
@@ -17,6 +19,7 @@ export function Panel(props: {
       <header className="panel-head">
         {props.lead ?? <span className="title">{props.title}</span>}
         {props.extra}
+        {props.extraAfter}
         <span className="spacer" />
         {props.popout && !standalone && (
           <button className="icon-btn" title="Open this panel in its own window" onClick={() => openPanelWindow(props.popout!)}>

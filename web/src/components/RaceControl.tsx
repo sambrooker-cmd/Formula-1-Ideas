@@ -1,4 +1,5 @@
-import { useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { getState } from '../sync/clock';
 import type { SessionData } from '../data/session';
 import { formatClock, trackStatusAt } from '../data/state';
 import { useNow } from '../hooks';
@@ -47,6 +48,34 @@ export function RaceControl({ data, area, lead }: { data: SessionData; area?: st
     audio.current.play().catch(() => undefined);
   };
 
+  // Auto-play: play each clip as playback reaches it (this window only, at up to 2× speed).
+  const [autoRadio, setAutoRadio] = useState(() => {
+    try {
+      return sessionStorage.getItem('pitwall.autoRadio') === '1';
+    } catch {
+      return false;
+    }
+  });
+  const prevT = useRef(t);
+  useEffect(() => {
+    const from = prevT.current;
+    prevT.current = t;
+    if (!autoRadio) return;
+    const { playing, live, speed } = getState();
+    const step = t - from;
+    if (!(playing || live) || speed > 2 || step <= 0 || step > 4000) return;
+    const clip = data.meta.radio.find(([, rt]) => rt > from && rt <= t);
+    if (clip) play(clip[2]);
+  }, [t, autoRadio, data]); // eslint-disable-line react-hooks/exhaustive-deps
+  const toggleAuto = (on: boolean) => {
+    setAutoRadio(on);
+    try {
+      sessionStorage.setItem('pitwall.autoRadio', on ? '1' : '0');
+    } catch {
+      // ignore
+    }
+  };
+
   return (
     <Panel
       title="Race control"
@@ -57,6 +86,14 @@ export function RaceControl({ data, area, lead }: { data: SessionData; area?: st
       extra={
         <label style={{ display: 'flex', gap: 4, alignItems: 'center', textTransform: 'none', letterSpacing: 0 }}>
           <input type="checkbox" checked={showRadio} onChange={(e) => setShowRadio(e.target.checked)} /> radio
+        </label>
+      }
+      extraAfter={
+        <label
+          title="Play team radio automatically as the replay reaches each clip (this window only)"
+          style={{ display: 'flex', gap: 4, alignItems: 'center', textTransform: 'none', letterSpacing: 0 }}
+        >
+          <input type="checkbox" checked={autoRadio} onChange={(e) => toggleAuto(e.target.checked)} /> auto-play
         </label>
       }
     >

@@ -11,8 +11,11 @@ export const PANEL_ROUTES = [
   { path: '/race-trace', title: 'Race trace' },
   { path: '/positions', title: 'Positions' },
   { path: '/tyre-wear', title: 'Tyre wear' },
+  { path: '/championship', title: 'Championship' },
   { path: '/wall', title: 'Full pit wall' },
   { path: '/companion', title: 'TV companion' },
+  { path: '/driver', title: 'Driver dashboard' },
+  { path: '/tv', title: 'TV mode' },
 ] as const;
 
 export interface WindowSpec {

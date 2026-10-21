@@ -10,6 +10,19 @@ A multi-window race replay "pit wall" for any Grand Prix session from 2023 onwar
 - **Tyre strategy:** stints as coloured bars for every driver.
 - **Weather:** air and track temperature, humidity, wind, rain.
 
+More views (tabs on the pit wall, or their own windows):
+
+- **Key moments:** every overtake, pit stop, flag, penalty, retirement and new fastest lap. Tap one to jump there, or press **▶ Highlights** to watch just the big moments back to back.
+- **Race trace, Positions and Tyre wear** charts. They show only laps already driven unless you choose **Whole race**.
+- **Qualifying mode:** for qualifying sessions the timing tower shows Q1/Q2/Q3, the drop zone, who's been knocked out, deleted laps and mini-sector colours.
+- **Pit stop predictor** (🔧 on the map): pick a driver to see a ghost car where they'd rejoin if they pitted now. It uses the stop time loss measured from that race, and allows for cheaper stops under the Safety Car.
+- **Championship as it stands:** the drivers' and constructors' standings if the race finished now.
+- **Alerts** (🔔 in the playback bar): banners for Safety Cars, red flags, retirements, penalties, big passes, fastest laps and your selected drivers' stops. 🔊 adds a sound in that window.
+- **Team radio auto-play:** tick **auto-play** in race control and clips play as the replay reaches them.
+- **Driver dashboard** (`/driver`): one driver, big and clear, to sit beside the TV's onboard channel.
+- **TV mode** (`/tv`): big text for a TV, for example over AirPlay.
+- **Auto-download:** tick **Download new races automatically** on the home page and each race downloads itself about 2 hours after it finishes, while Pit Wall is running.
+
 The home page also shows the **season**: the next race with a countdown, the full calendar with winners, and the drivers' and constructors' championships. Finished races have a **Download** button; once downloaded it becomes **Replay**.
 
 Every panel can open in its own window, on any screen or any device on your Wi-Fi. All windows share one clock: press pause, scrub or change speed in any window and the others follow.

@@ -14,6 +14,10 @@ import { LapCompare } from './components/LapCompare';
 import { KeyMoments } from './components/KeyMoments';
 import { PositionChart, RaceTrace, TyreWear } from './components/RaceCharts';
 import { Tabbed } from './components/Tabbed';
+import { Championship } from './components/Championship';
+import { AlertsHost } from './components/Alerts';
+import { DriverDash } from './components/DriverDash';
+import { TvMode } from './components/TvMode';
 
 type PanelComponent = ComponentType<{ data: SessionData; area?: string }>;
 
@@ -28,7 +32,21 @@ const SINGLE: Record<string, PanelComponent> = {
   '/race-trace': RaceTrace,
   '/positions': PositionChart,
   '/tyre-wear': TyreWear,
+  '/championship': Championship,
 };
+
+/** Pit wall bottom-right: tyre strategy or the live championship. */
+function StrategyTabs({ data }: { data: SessionData }) {
+  return (
+    <Tabbed
+      storageKey="pitwall.tab.strategy"
+      tabs={[
+        { id: 'strategy', label: 'Strategy', render: (lead) => <Strategy data={data} area="strategy" lead={lead} /> },
+        { id: 'champ', label: 'Championship', render: (lead) => <Championship data={data} area="strategy" lead={lead} /> },
+      ]}
+    />
+  );
+}
 
 /** Pit wall bottom-left: telemetry and the lap-by-lap analysis charts. */
 function AnalysisTabs({ data }: { data: SessionData }) {
@@ -115,12 +133,13 @@ function Wall() {
         {(data) => (
           <>
             <TopBar data={data} />
+            <AlertsHost data={data} />
             <div className="wall">
               <TrackMap data={data} area="map" />
               <TimingTower data={data} area="tower" />
               <ControlTabs data={data} />
               <AnalysisTabs data={data} />
-              <Strategy data={data} area="strategy" />
+              <StrategyTabs data={data} />
             </div>
             <PlaybackBar data={data} />
           </>
@@ -138,12 +157,31 @@ function Companion() {
         {(data) => (
           <>
             <TopBar data={data} />
+            <AlertsHost data={data} />
             <div className="companion">
               <TrackMap data={data} area="map" />
               <TimingTower data={data} area="tower" />
               <ControlTabs data={data} />
             </div>
             <PlaybackBar data={data} />
+          </>
+        )}
+      </WithSession>
+    </div>
+  );
+}
+
+/** A full-page view with alerts and the playback bar (driver dashboard, TV mode). */
+function FullPage({ children, compactBar = false, topBar = true }: { children: (data: SessionData) => React.ReactNode; compactBar?: boolean; topBar?: boolean }) {
+  return (
+    <div className="page">
+      <WithSession>
+        {(data) => (
+          <>
+            {topBar && <TopBar data={data} />}
+            <AlertsHost data={data} />
+            <div className="page-body">{children(data)}</div>
+            <PlaybackBar data={data} compact={compactBar} />
           </>
         )}
       </WithSession>
@@ -174,6 +212,8 @@ function App() {
   const path = location.pathname.replace(/\/+$/, '') || '/';
   if (path === '/wall') return <Wall />;
   if (path === '/companion') return <Companion />;
+  if (path === '/driver') return <FullPage>{(data) => <DriverDash data={data} />}</FullPage>;
+  if (path === '/tv') return <FullPage compactBar topBar={false}>{(data) => <TvMode data={data} />}</FullPage>;
   if (SINGLE[path]) {
     document.title = `Pit Wall · ${path.slice(1)}`;
     return <Single Component={SINGLE[path]} />;

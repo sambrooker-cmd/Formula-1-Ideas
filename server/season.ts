@@ -92,3 +92,43 @@ export async function season(year: number) {
     })),
   };
 }
+
+/**
+ * Championship standings going into a race (or sprint) on `date`: after the previous
+ * round, plus this weekend's sprint points when it's the main race.
+ */
+export async function standingsBefore(year: number, date: string, kind: 'race' | 'sprint') {
+  const schedule = await jolpica(`${year}.json?limit=100`);
+  const event = schedule.RaceTable.Races.find((r: any) => r.date === date || r.Sprint?.date === date);
+  if (!event) throw new Error(`No ${year} round on ${date}`);
+  const round = Number(event.round);
+
+  const drivers = new Map<string, { code: string; name: string; team: string; points: number }>();
+  const constructors = new Map<string, number>();
+  if (round > 1) {
+    const d = await jolpica(`${year}/${round - 1}/driverStandings.json?limit=100`);
+    for (const s of d.StandingsTable.StandingsLists[0]?.DriverStandings ?? []) {
+      const code = s.Driver.code ?? s.Driver.familyName.slice(0, 3).toUpperCase();
+      drivers.set(code, { code, name: `${s.Driver.givenName} ${s.Driver.familyName}`, team: s.Constructors?.at(-1)?.name ?? '', points: Number(s.points) });
+    }
+    const c = await jolpica(`${year}/${round - 1}/constructorStandings.json?limit=100`);
+    for (const s of c.StandingsTable.StandingsLists[0]?.ConstructorStandings ?? []) constructors.set(s.Constructor.name, Number(s.points));
+  }
+  if (kind === 'race' && event.Sprint) {
+    const sprint = await jolpica(`${year}/${round}/sprint.json?limit=100`);
+    for (const r of sprint.RaceTable.Races[0]?.SprintResults ?? []) {
+      const code = r.Driver.code ?? r.Driver.familyName.slice(0, 3).toUpperCase();
+      const pts = Number(r.points);
+      const entry = drivers.get(code) ?? { code, name: `${r.Driver.givenName} ${r.Driver.familyName}`, team: r.Constructor.name, points: 0 };
+      entry.points += pts;
+      drivers.set(code, entry);
+      constructors.set(r.Constructor.name, (constructors.get(r.Constructor.name) ?? 0) + pts);
+    }
+  }
+  return {
+    round,
+    raceName: event.raceName,
+    drivers: [...drivers.values()],
+    constructors: [...constructors].map(([name, points]) => ({ name, points })),
+  };
+}
