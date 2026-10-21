@@ -15,7 +15,7 @@ See [`BRIEF.md`](BRIEF.md) for the project brief and [`docs/PHASE0_FINDINGS.md`]
 
 ## Setup
 
-You need **Node.js 20 or newer**.
+You need **Node.js 22.13 or newer**: the LTS download from nodejs.org is fine. Nothing needs compiling, so you don't need Python or Xcode tools.
 
 ```bash
 npm install

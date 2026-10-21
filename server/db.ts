@@ -1,4 +1,4 @@
-import Database from 'better-sqlite3';
+import Database from './sqlite.ts';
 import fs from 'node:fs';
 import path from 'node:path';
 
@@ -53,7 +53,7 @@ export function openSessionDb(sessionKey: number, { create = false } = {}) {
   return db;
 }
 
-export type SessionDb = Database.Database;
+export type SessionDb = Database;
 
 export interface CachedSessionSummary {
   session_key: number;
@@ -75,7 +75,7 @@ export function listCachedSessions(): CachedSessionSummary[] {
   for (const f of fs.readdirSync(CACHE_DIR)) {
     const m = /^session-(\d+)\.sqlite$/.exec(f);
     if (!m) continue;
-    const db = new Database(path.join(CACHE_DIR, f), { readonly: true, fileMustExist: true });
+    const db = new Database(path.join(CACHE_DIR, f), { readonly: true });
     try {
       const s = db.prepare('SELECT * FROM session').get() as CachedSessionSummary | undefined;
       if (!s) continue;
