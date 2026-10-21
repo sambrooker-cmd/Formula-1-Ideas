@@ -7,13 +7,53 @@ import { Panel } from './Panel';
 import { StatusPill } from './PlaybackBar';
 
 type Pt = [number, number];
+interface Rect {
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+}
+
+const LABEL_H = 16;
+const overlaps = (a: Rect, b: Rect) => a.x < b.x + b.w && b.x < a.x + a.w && a.y < b.y + b.h && b.y < a.y + a.h;
+
+/** Where a label could go: hugging the dot first, then further out along 8 directions (with a leader line). */
+function labelCandidates(x: number, y: number, r: number, w: number) {
+  const h = LABEL_H;
+  const out: { rect: Rect; leader: boolean }[] = [
+    { rect: { x: x + r + 3, y: y - h / 2, w, h }, leader: false },
+    { rect: { x: x - r - 3 - w, y: y - h / 2, w, h }, leader: false },
+    { rect: { x: x - w / 2, y: y - r - 3 - h, w, h }, leader: false },
+    { rect: { x: x - w / 2, y: y + r + 3, w, h }, leader: false },
+  ];
+  for (const dist of [24, 38, 54]) {
+    for (let k = 0; k < 8; k++) {
+      const a = (k * Math.PI) / 4;
+      const ax = x + Math.cos(a) * dist;
+      const ay = y + Math.sin(a) * dist;
+      const cx = Math.cos(a);
+      const cy = Math.sin(a);
+      const rx = cx > 0.3 ? ax : cx < -0.3 ? ax - w : ax - w / 2;
+      const ry = cy > 0.3 ? ay : cy < -0.3 ? ay - h : ay - h / 2;
+      out.push({ rect: { x: rx, y: ry, w, h }, leader: true });
+    }
+  }
+  return out;
+}
 
 /** Pick the rotation that lets the outline fill the panel best, then build a world→screen transform. */
-function fitTransform(outline: Pt[], width: number, height: number, fixedDeg: number | null) {
+export function fitTransform(
+  outline: Pt[],
+  width: number,
+  height: number,
+  fixedDeg: number | null,
+  // Defaults leave room for the lap counter overlay (top) and the weather strip (bottom).
+  pad = { x: 40, top: 56, bottom: 40 },
+) {
   if (outline.length < 2 || width < 10 || height < 10) return null;
-  const padX = 40;
-  const padTop = 56; // room for the lap counter overlay
-  const padBottom = 40; // and the weather strip
+  const padX = pad.x;
+  const padTop = pad.top;
+  const padBottom = pad.bottom;
   let best = { scale: 0, angle: 0, cx: 0, cy: 0 };
   const angles = fixedDeg == null ? Array.from({ length: 60 }, (_, i) => i * 3) : [fixedDeg];
   for (const deg of angles) {
@@ -102,6 +142,7 @@ export function TrackMap({ data, area }: { data: SessionData; area?: string }) {
     const ny = (bx - ax) / len;
 
     const drivers = data.meta.drivers;
+    const lastSpot = new Map<number, number>(); // keeps each label where it was, so labels don't flicker
     let raf = 0;
     const draw = () => {
       const t = now();
@@ -133,31 +174,68 @@ export function TrackMap({ data, area }: { data: SessionData; area?: string }) {
         if (!p) continue;
         const ps = data.positions.get(d.number);
         const pos = ps ? ps.v[Math.max(0, lastAtOrBefore(ps.t, t))] : 99;
-        cars.push({ d, p, pos, sel: selected.includes(d.number), out: isRetired(data, d.number, t) });
+        const [x, y] = toScreen(p.x, p.y);
+        const sel = selected.includes(d.number);
+        cars.push({ d, x, y, r: sel ? 8.5 : 6.5, pos, sel, dim: p.stale || isRetired(data, d.number, t) });
       }
       cars.sort((a, b) => Number(a.sel) - Number(b.sel) || b.pos - a.pos);
+      for (const c of cars) {
+        ctx.globalAlpha = c.dim ? 0.3 : 1;
+        ctx.beginPath();
+        ctx.arc(c.x, c.y, c.r, 0, Math.PI * 2);
+        ctx.fillStyle = c.d.colour;
+        ctx.fill();
+        ctx.lineWidth = c.sel ? 3 : 1.5;
+        ctx.strokeStyle = c.sel ? '#ffffff' : '#07090d';
+        ctx.stroke();
+      }
+
+      // Labels go on top of every dot. Placed in priority order (selected, then race order),
+      // each takes the first spot that doesn't cover another label or car; if it has to sit
+      // away from its car, a thin line points back to it.
       ctx.font = '700 11px Inter, system-ui, sans-serif';
       ctx.textBaseline = 'middle';
-      for (const { d, p, sel, out } of cars) {
-        const [x, y] = toScreen(p.x, p.y);
-        ctx.globalAlpha = p.stale || out ? 0.3 : 1;
-        const r = sel ? 8.5 : 6.5;
+      const placed: Rect[] = [];
+      const dotRects: Rect[] = cars.map((c) => ({ x: c.x - c.r, y: c.y - c.r, w: c.r * 2, h: c.r * 2 }));
+      const byPriority = [...cars].sort((a, b) => Number(b.sel) - Number(a.sel) || a.pos - b.pos);
+      for (const c of byPriority) {
+        const w = ctx.measureText(c.d.code).width + 8;
+        const own = dotRects[cars.indexOf(c)];
+        const fits = (r: Rect) =>
+          r.x >= 0 && r.y >= 0 && r.x + r.w <= size.width && r.y + r.h <= size.height &&
+          !placed.some((o) => overlaps(o, r)) &&
+          !dotRects.some((o) => o !== own && overlaps(o, r));
+        const candidates = labelCandidates(c.x, c.y, c.r, w);
+        const remembered = lastSpot.get(c.d.number);
+        // Next to the car if there's room; otherwise stay where it was last frame, then search outwards.
+        const order = [0, 1, 2, 3, ...(remembered != null ? [remembered] : []), ...candidates.keys()];
+        const chosen = order.find((i) => fits(candidates[i].rect));
+        if (chosen == null) continue; // nowhere tidy to put it: the dot alone still shows (and can be clicked)
+        lastSpot.set(c.d.number, chosen);
+        const { rect, leader } = candidates[chosen];
+        placed.push(rect);
+        ctx.globalAlpha = c.dim ? 0.35 : 1;
+        if (leader) {
+          const tx = Math.max(rect.x, Math.min(c.x, rect.x + rect.w));
+          const ty = Math.max(rect.y, Math.min(c.y, rect.y + rect.h));
+          const ang = Math.atan2(ty - c.y, tx - c.x);
+          ctx.strokeStyle = c.sel ? '#ffffff' : c.d.colour;
+          ctx.lineWidth = 1;
+          ctx.beginPath();
+          ctx.moveTo(c.x + Math.cos(ang) * (c.r + 1), c.y + Math.sin(ang) * (c.r + 1));
+          ctx.lineTo(tx, ty);
+          ctx.stroke();
+        }
+        ctx.fillStyle = c.sel ? '#ffffff' : '#07090dd9';
         ctx.beginPath();
-        ctx.arc(x, y, r, 0, Math.PI * 2);
-        ctx.fillStyle = d.colour;
+        ctx.roundRect(rect.x, rect.y, rect.w, rect.h, 4);
         ctx.fill();
-        ctx.lineWidth = sel ? 3 : 1.5;
-        ctx.strokeStyle = sel ? '#ffffff' : '#07090d';
-        ctx.stroke();
-        // label pill
-        const w = ctx.measureText(d.code).width + 8;
-        const lx = x + r + 3;
-        ctx.fillStyle = sel ? '#ffffff' : '#07090dcc';
-        ctx.beginPath();
-        ctx.roundRect(lx, y - 8, w, 16, 4);
-        ctx.fill();
-        ctx.fillStyle = sel ? '#07090d' : '#e8edf3';
-        ctx.fillText(d.code, lx + 4, y + 0.5);
+        if (leader && !c.sel) {
+          ctx.strokeStyle = c.d.colour;
+          ctx.stroke();
+        }
+        ctx.fillStyle = c.sel ? '#07090d' : '#e8edf3';
+        ctx.fillText(c.d.code, rect.x + 4, rect.y + rect.h / 2 + 0.5);
       }
       ctx.globalAlpha = 1;
       raf = requestAnimationFrame(draw);

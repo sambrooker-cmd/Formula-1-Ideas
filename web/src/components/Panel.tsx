@@ -3,6 +3,8 @@ import { openPanelWindow } from '../layouts';
 
 export function Panel(props: {
   title: string;
+  /** Replaces the title, e.g. with tabs that switch what this panel shows. */
+  lead?: ReactNode;
   area?: string;
   popout?: string;
   extra?: ReactNode;
@@ -13,7 +15,7 @@ export function Panel(props: {
   return (
     <section className="panel" style={props.area ? { gridArea: props.area } : undefined}>
       <header className="panel-head">
-        <span className="title">{props.title}</span>
+        {props.lead ?? <span className="title">{props.title}</span>}
         {props.extra}
         <span className="spacer" />
         {props.popout && !standalone && (

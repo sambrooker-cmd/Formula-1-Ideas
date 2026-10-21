@@ -9,6 +9,7 @@ import { ensurePack } from './pack.ts';
 import { ingestSession, type Progress } from './ingest.ts';
 import { get } from './openf1.ts';
 import zlib from 'node:zlib';
+import { season } from './season.ts';
 import { addClient, liveMeta, liveSamples, liveState, startLiveFeed, startSimulation, stopSimulation } from './live.ts';
 
 const PORT = Number(process.env.PORT ?? 8787);
@@ -86,6 +87,17 @@ app.post<{ Body: { sessionKey: number } }>('/api/ingest', async (req, reply) => 
 });
 
 app.get('/api/ingest', async () => jobs.slice(-10));
+
+// ---- season calendar & standings (Jolpica) --------------------------------
+
+app.get<{ Querystring: { year?: string } }>('/api/season', async (req, reply) => {
+  const year = Number(req.query.year) || new Date().getFullYear();
+  try {
+    return await season(year);
+  } catch (err) {
+    return reply.code(502).send({ error: `Couldn't load the ${year} season: ${(err as Error).message}` });
+  }
+});
 
 // ---- live mode ---------------------------------------------------------------
 

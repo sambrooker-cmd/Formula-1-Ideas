@@ -6,6 +6,7 @@ export const PANEL_ROUTES = [
   { path: '/telemetry', title: 'Telemetry' },
   { path: '/race-control', title: 'Race control' },
   { path: '/strategy', title: 'Tyre strategy' },
+  { path: '/compare', title: 'Fastest laps' },
   { path: '/wall', title: 'Full pit wall' },
   { path: '/companion', title: 'TV companion' },
 ] as const;

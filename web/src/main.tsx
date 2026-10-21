@@ -10,6 +10,8 @@ import { TimingTower } from './components/TimingTower';
 import { RaceControl } from './components/RaceControl';
 import { Telemetry } from './components/Telemetry';
 import { Strategy } from './components/Strategy';
+import { LapCompare } from './components/LapCompare';
+import { useState } from 'react';
 
 type PanelComponent = ComponentType<{ data: SessionData; area?: string }>;
 
@@ -19,7 +21,34 @@ const SINGLE: Record<string, PanelComponent> = {
   '/telemetry': Telemetry,
   '/race-control': RaceControl,
   '/strategy': Strategy,
+  '/compare': LapCompare,
 };
+
+/** Bottom-left of the pit wall: live telemetry or the fastest-lap comparison (remembered per browser). */
+function AnalysisPanel({ data }: { data: SessionData }) {
+  const [tab, setTab] = useState<'tele' | 'compare'>(() => {
+    try {
+      return localStorage.getItem('pitwall.analysis') === 'compare' ? 'compare' : 'tele';
+    } catch {
+      return 'tele';
+    }
+  });
+  const choose = (next: 'tele' | 'compare') => {
+    setTab(next);
+    try {
+      localStorage.setItem('pitwall.analysis', next);
+    } catch {
+      // ignore
+    }
+  };
+  const lead = (
+    <span className="tabs">
+      <button className={tab === 'tele' ? 'on' : ''} onClick={() => choose('tele')}>Telemetry</button>
+      <button className={tab === 'compare' ? 'on' : ''} onClick={() => choose('compare')}>Fastest laps</button>
+    </span>
+  );
+  return tab === 'tele' ? <Telemetry data={data} area="tele" lead={lead} /> : <LapCompare data={data} area="tele" lead={lead} />;
+}
 
 function TopBar({ data }: { data?: SessionData }) {
   return (
@@ -81,7 +110,7 @@ function Wall() {
               <TrackMap data={data} area="map" />
               <TimingTower data={data} area="tower" />
               <RaceControl data={data} area="rc" />
-              <Telemetry data={data} area="tele" />
+              <AnalysisPanel data={data} />
               <Strategy data={data} area="strategy" />
             </div>
             <PlaybackBar data={data} />

@@ -6,8 +6,11 @@ A multi-window race replay "pit wall" for any Grand Prix session from 2023 onwar
 - **Timing tower:** position, gap, interval, last lap, tyre and age, pit stops. Battles under 1 s are highlighted.
 - **Race control:** flags, Safety Car / VSC / red flag, penalties, and team radio clips you can play.
 - **Telemetry:** speed, throttle, brake and gear for one or two drivers over the current lap, with a marker for "now".
+- **Fastest laps:** two drivers' best laps head to head: the circuit coloured by who was quicker where, sector times, a speed trace and the time gap around the lap, plus a button that races the two laps against each other on the map. It's a tab next to Telemetry, or its own window at `/compare`.
 - **Tyre strategy:** stints as coloured bars for every driver.
 - **Weather:** air and track temperature, humidity, wind, rain.
+
+The home page also shows the **season**: the next race with a countdown, the full calendar with winners, and the drivers' and constructors' championships. Finished races have a **Download** button; once downloaded it becomes **Replay**.
 
 Every panel can open in its own window, on any screen or any device on your Wi-Fi. All windows share one clock: press pause, scrub or change speed in any window and the others follow.
 
@@ -113,6 +116,7 @@ OpenF1 ──(one throttled queue, 24 req/min)──▶ ingest ──▶ cache/s
 
 - **Live** (`server/live.ts`): keeps the session in progress in memory. It's fed from OpenF1's MQTT stream, or from the simulator. Browsers load a snapshot in the same format as a replay pack, then receive updates 4 times a second over a WebSocket.
 - **Server** (`server/`, Fastify + SQLite):
+  - `season.ts`: calendar, results and standings from Jolpica, cached for 10 minutes.
   - `openf1.ts`: the only code that talks to OpenF1. It paces requests, retries with backoff, and splits a request into smaller time ranges if OpenF1 says it's too big.
   - `ingest.ts`: downloads a session and records each finished request so it can resume.
   - `pack.ts`: turns the cache into a compact binary pack for the browser.

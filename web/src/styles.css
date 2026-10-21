@@ -788,3 +788,172 @@ a {
 #root {
   padding: env(safe-area-inset-top, 0px) env(safe-area-inset-right, 0px) env(safe-area-inset-bottom, 0px) env(safe-area-inset-left, 0px);
 }
+
+/* ---------- panel tabs & segmented toggles ---------- */
+.tabs,
+.seg {
+  display: inline-flex;
+  border: 1px solid var(--line-2);
+  border-radius: 7px;
+  overflow: hidden;
+}
+.tabs button,
+.seg button {
+  background: transparent;
+  border: 0;
+  padding: 3px 9px;
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.seg button {
+  text-transform: none;
+  letter-spacing: 0;
+}
+.tabs button.on,
+.seg button.on {
+  background: var(--text);
+  color: var(--bg);
+  font-weight: 700;
+}
+
+/* ---------- fastest-lap comparison ---------- */
+.compare {
+  display: grid;
+  grid-template-columns: minmax(200px, 0.8fr) minmax(0, 1.4fr);
+  height: 100%;
+}
+.compare-map {
+  position: relative;
+  border-right: 1px solid var(--line);
+  min-height: 200px;
+}
+.compare-map-bar {
+  position: absolute;
+  left: 8px;
+  bottom: 8px;
+  display: flex;
+  gap: 6px;
+}
+.compare-map-bar .btn {
+  padding: 5px 10px;
+  font-size: 12px;
+}
+.compare-side {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+}
+.compare-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+}
+.compare-table th {
+  color: var(--dim);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  text-align: right;
+  padding: 5px 8px;
+}
+.compare-table td {
+  text-align: right;
+  padding: 3px 8px;
+  border-top: 1px solid #ffffff08;
+}
+.compare-table .l {
+  text-align: left;
+}
+.compare-verdict {
+  padding: 6px 8px;
+  font-size: 12px;
+  border-top: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
+}
+.compare-charts {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+.compare-charts .chart {
+  position: relative;
+  min-height: 0;
+}
+@media (max-width: 760px) {
+  .compare {
+    grid-template-columns: 1fr;
+    grid-template-rows: 260px auto;
+  }
+}
+
+/* ---------- season ---------- */
+.next-race {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 12px 14px;
+  border: 1px solid var(--line-2);
+  border-left: 4px solid var(--accent);
+  border-radius: 10px;
+  background: var(--panel-2);
+  margin-bottom: 14px;
+}
+.next-count {
+  font-size: 26px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+.season-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr);
+  gap: 18px;
+}
+@media (max-width: 860px) {
+  .season-grid {
+    grid-template-columns: 1fr;
+  }
+}
+.calendar {
+  display: grid;
+  align-content: start;
+}
+.cal-row {
+  display: grid;
+  grid-template-columns: 26px minmax(0, 1fr) 70px 84px;
+  align-items: center;
+  gap: 8px;
+  min-height: 32px;
+  border-top: 1px solid #ffffff08;
+  font-size: 13px;
+}
+.cal-row.future .cal-name {
+  color: var(--muted);
+}
+.cal-row.next {
+  background: #ff4d2e14;
+  border-radius: 6px;
+}
+.cal-round {
+  text-align: right;
+}
+.cal-name {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.cal-date {
+  font-size: 12px;
+}
+.cal-action {
+  text-align: right;
+}
+.btn.small {
+  padding: 3px 9px;
+  font-size: 12px;
+}

@@ -46,7 +46,7 @@ function lapTrace(s: DriverSamples, start: number, end: number, grid: number) {
   return { out, length: s.dist[i1] - s.dist[i0] };
 }
 
-export function Telemetry({ data, area }: { data: SessionData; area?: string }) {
+export function Telemetry({ data, area, lead }: { data: SessionData; area?: string; lead?: React.ReactNode }) {
   const t = useNow(8);
   const { selected } = useSynced();
   const leader = useMemo(() => tower(data, t)[0]?.driver, [data, Math.floor(t / 5000)]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -184,6 +184,7 @@ export function Telemetry({ data, area }: { data: SessionData; area?: string }) 
   return (
     <Panel
       title="Telemetry"
+      lead={lead}
       area={area}
       popout="/telemetry"
       extra={

@@ -70,6 +70,20 @@ export function Home() {
         </div>
       </div>
 
+      <SeasonCard
+        jobs={jobs}
+        onOpen={(key) => open(key)}
+        onDownload={async (sessionKey) => {
+          const r = await fetch('/api/ingest', {
+            method: 'POST',
+            headers: { 'content-type': 'application/json' },
+            body: JSON.stringify({ sessionKey }),
+          });
+          const job = await r.json();
+          setJobs((prev) => [...prev, job]);
+        }}
+      />
+
       <section className="card">
         <h2>Cached sessions</h2>
         <div className="session-list">
@@ -114,6 +128,183 @@ interface LiveStatus {
   simulating: { sessionKey: number; label: string } | null;
   session: { key: number; name: string; dateStart: string; dateEnd: string } | null;
   lastMessageAt: number | null;
+}
+
+interface SeasonRace {
+  round: number;
+  name: string;
+  circuit: string;
+  locality: string;
+  country: string;
+  start: string;
+  sprint: boolean;
+  winner: { code: string; name: string; team: string } | null;
+  sessionKey: number | null;
+  cached: boolean;
+}
+
+interface Season {
+  year: number;
+  afterRound: number;
+  races: SeasonRace[];
+  drivers: { position: number; code: string; name: string; team: string; points: number; wins: number }[];
+  constructors: { position: number; name: string; points: number; wins: number }[];
+}
+
+function countdown(ms: number) {
+  if (ms <= 0) return 'now';
+  const d = Math.floor(ms / 86_400_000);
+  const h = Math.floor((ms % 86_400_000) / 3_600_000);
+  const m = Math.floor((ms % 3_600_000) / 60_000);
+  return d > 0 ? `${d}d ${h}h` : h > 0 ? `${h}h ${m}m` : `${m}m`;
+}
+
+/** The season at a glance: next race, calendar with winners (and one-click replays), and both championships. */
+function SeasonCard({ jobs, onOpen, onDownload }: { jobs: Job[]; onOpen: (key: number) => void; onDownload: (key: number) => void }) {
+  const thisYear = new Date().getFullYear();
+  const [year, setYear] = useState(thisYear);
+  const [season, setSeason] = useState<Season | null>(null);
+  const [error, setError] = useState('');
+  const [allDrivers, setAllDrivers] = useState(false);
+  const [now, setNow] = useState(Date.now());
+
+  useEffect(() => {
+    setSeason(null);
+    setError('');
+    getJson<Season>(`/api/season?year=${year}`).then(setSeason, (e) => setError(String(e.message ?? e)));
+  }, [year, jobs.filter((j) => j.state === 'done').length]);
+
+  useEffect(() => {
+    const id = setInterval(() => setNow(Date.now()), 30_000);
+    return () => clearInterval(id);
+  }, []);
+
+  const next = season?.races.find((r) => Date.parse(r.start) + 3 * 3600e3 > now);
+  const downloading = new Set(jobs.filter((j) => j.state === 'running').map((j) => j.sessionKey));
+  const fmtDate = (iso: string) => new Date(iso).toLocaleDateString(undefined, { day: 'numeric', month: 'short' });
+  const fmtWhen = (iso: string) =>
+    new Date(iso).toLocaleString(undefined, { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+
+  return (
+    <section className="card">
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
+        <h2 style={{ margin: 0 }}>Season</h2>
+        <select className="lap-jump" value={year} onChange={(e) => setYear(Number(e.target.value))} aria-label="Season">
+          {Array.from({ length: thisYear - 2022 }, (_, i) => thisYear - i).map((y) => (
+            <option key={y}>{y}</option>
+          ))}
+        </select>
+        {season && season.afterRound > 0 && <span className="dim" style={{ fontSize: 12 }}>Standings after round {season.afterRound}</span>}
+      </div>
+      {error && <div style={{ color: 'var(--red)' }}>{error}</div>}
+      {!season && !error && <div className="dim">Loading the {year} season…</div>}
+      {season && (
+        <>
+          {next && (
+            <div className="next-race">
+              <div>
+                <div className="dim" style={{ fontSize: 11, letterSpacing: '0.08em', textTransform: 'uppercase' }}>
+                  Next · Round {next.round}
+                  {next.sprint && ' · Sprint weekend'}
+                </div>
+                <div style={{ fontSize: 18, fontWeight: 700 }}>{next.name}</div>
+                <div className="muted">
+                  {next.circuit}, {next.locality} · lights out {fmtWhen(next.start)}
+                </div>
+              </div>
+              <div className="next-count num">{countdown(Date.parse(next.start) - now)}</div>
+            </div>
+          )}
+          <div className="season-grid">
+            <div className="calendar">
+              {season.races.map((r) => {
+                const past = Date.parse(r.start) + 3 * 3600e3 < now;
+                const isNext = r === next;
+                return (
+                  <div key={r.round} className={'cal-row' + (isNext ? ' next' : '') + (past ? '' : ' future')}>
+                    <span className="num dim cal-round">{r.round}</span>
+                    <span className="cal-name">
+                      {r.name.replace(' Grand Prix', ' GP')}
+                      {r.sprint && <span className="tag out" style={{ marginLeft: 6 }}>SPRINT</span>}
+                      <span className="dim cal-date"> · {fmtDate(r.start)}</span>
+                    </span>
+                    <span className="cal-winner" title={r.winner ? `${r.winner.name} · ${r.winner.team}` : undefined}>
+                      {r.winner ? <b>🏆 {r.winner.code}</b> : isNext ? <span className="green">Next</span> : ''}
+                    </span>
+                    <span className="cal-action">
+                      {r.cached && r.sessionKey ? (
+                        <button className="btn primary small" onClick={() => onOpen(r.sessionKey!)}>Replay</button>
+                      ) : past && r.sessionKey ? (
+                        downloading.has(r.sessionKey) ? (
+                          <span className="dim" style={{ fontSize: 11 }}>Downloading…</span>
+                        ) : (
+                          <button className="btn small" onClick={() => onDownload(r.sessionKey!)} title="Download this race for replay (2–4 minutes)">
+                            Download
+                          </button>
+                        )
+                      ) : null}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+            <div className="standings">
+              <table className="tower">
+                <thead>
+                  <tr>
+                    <th className="l" style={{ textAlign: 'center' }}>P</th>
+                    <th className="l">Driver</th>
+                    <th className="l">Team</th>
+                    <th>Wins</th>
+                    <th>Pts</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {(allDrivers ? season.drivers : season.drivers.slice(0, 10)).map((d) => (
+                    <tr key={d.code + d.name} title={d.name} style={{ cursor: 'default' }}>
+                      <td className="pos num">{d.position}</td>
+                      <td className="l"><b>{d.code}</b></td>
+                      <td className="l muted">{d.team}</td>
+                      <td className="num muted">{d.wins || ''}</td>
+                      <td className="num"><b>{d.points}</b></td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+              {season.drivers.length > 10 && (
+                <button className="icon-btn" style={{ margin: '6px 0 12px' }} onClick={() => setAllDrivers(!allDrivers)}>
+                  {allDrivers ? 'Show top 10' : `Show all ${season.drivers.length}`}
+                </button>
+              )}
+              <table className="tower">
+                <thead>
+                  <tr>
+                    <th className="l" style={{ textAlign: 'center' }}>P</th>
+                    <th className="l">Team</th>
+                    <th>Wins</th>
+                    <th>Pts</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {season.constructors.map((c) => (
+                    <tr key={c.name} style={{ cursor: 'default' }}>
+                      <td className="pos num">{c.position}</td>
+                      <td className="l"><b>{c.name}</b></td>
+                      <td className="num muted">{c.wins || ''}</td>
+                      <td className="num"><b>{c.points}</b></td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+          <div className="dim" style={{ fontSize: 11, marginTop: 10 }}>
+            Calendar, results and standings from Jolpica (free). Times shown in your local time zone.
+          </div>
+        </>
+      )}
+    </section>
+  );
 }
 
 function LiveCard({ cached }: { cached: Cached[] }) {
