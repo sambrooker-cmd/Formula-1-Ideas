@@ -36,7 +36,7 @@ export function RaceControl({ data, area }: { data: SessionData; area?: string }
     }));
     for (const [driver, t, url] of data.meta.radio) list.push({ kind: 'radio', t, driver, url });
     return list.sort((a, b) => a.t - b.t);
-  }, [data]);
+  }, [data, data.version]);
 
   const visible = items.filter((i) => i.t <= t && (showRadio || i.kind === 'rc')).reverse().slice(0, 80);
   const status = trackStatusAt(data, t);

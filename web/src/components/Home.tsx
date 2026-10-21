@@ -95,12 +95,135 @@ export function Home() {
         </div>
       </section>
 
+      <LiveCard cached={cached} />
+
       <IngestCard jobs={jobs} onStarted={(j) => setJobs((prev) => [...prev, j])} />
 
       <LayoutsCard hasSession={sessionKey != null} />
 
       <Footer />
     </div>
+  );
+}
+
+interface LiveStatus {
+  source: 'none' | 'openf1' | 'simulation';
+  configured: boolean;
+  connected: boolean;
+  error: string | null;
+  simulating: { sessionKey: number; label: string } | null;
+  session: { key: number; name: string; dateStart: string; dateEnd: string } | null;
+  lastMessageAt: number | null;
+}
+
+function LiveCard({ cached }: { cached: Cached[] }) {
+  const [live, setLive] = useState<LiveStatus | null>(null);
+  const [simKey, setSimKey] = useState<number | ''>('');
+  const [fromLap, setFromLap] = useState(1);
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    let stop = false;
+    const poll = async () => {
+      const s = await getJson<LiveStatus>('/api/live').catch(() => null);
+      if (stop) return;
+      setLive(s);
+      setTimeout(poll, 3000);
+    };
+    poll();
+    return () => {
+      stop = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (simKey === '' && cached.length) setSimKey(cached.find((c) => c.complete)?.session_key ?? '');
+  }, [cached, simKey]);
+
+  const openLive = (path: string) => {
+    clock.openLive();
+    location.href = path;
+  };
+
+  const simulate = async () => {
+    setError('');
+    const r = await fetch('/api/live/simulate', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ sessionKey: simKey, fromLap }),
+    });
+    const body = await r.json();
+    if (!r.ok) setError(body.error);
+    else setLive(body);
+  };
+
+  const stopSim = async () => setLive(await (await fetch('/api/live/stop', { method: 'POST' })).json());
+
+  const fresh = !!live?.session && !!live.lastMessageAt && Date.now() - live.lastMessageAt < 30_000;
+  const feedLabel = !live
+    ? 'Checking…'
+    : live.source === 'simulation'
+      ? `Simulating ${live.simulating?.label}`
+      : !live.configured
+        ? 'Not set up'
+        : live.connected
+          ? live.session
+            ? `Connected · ${live.session.name}`
+            : 'Connected · waiting for the next session'
+          : 'Connecting…';
+
+  return (
+    <section className="card live-card">
+      <h2>Live</h2>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+        <span>
+          <span className="dot" style={{ background: fresh ? 'var(--red)' : live?.connected ? 'var(--green)' : 'var(--dim)' }} />
+          {feedLabel}
+        </span>
+        <span style={{ flex: 1 }} />
+        <button className="btn primary" disabled={!live?.session} onClick={() => openLive('/companion')}>
+          Open companion view
+        </button>
+        <button className="btn" disabled={!live?.session} onClick={() => openLive('/wall')}>
+          Full pit wall
+        </button>
+      </div>
+      {live?.error && <div style={{ color: 'var(--red)', marginTop: 8, fontSize: 12 }}>{live.error}</div>}
+      {live && !live.configured && (
+        <div className="muted" style={{ marginTop: 10, fontSize: 12 }}>
+          To follow real sessions, copy <code>.env.example</code> to <code>.env</code>, add your OpenF1 sponsor login, and restart{' '}
+          <code>npm run dev</code>.
+        </div>
+      )}
+      <div className="muted" style={{ marginTop: 10, fontSize: 12 }}>
+        Watching on the TV? Open the companion view on a laptop or tablet, then use <b>📺 TV delay → Sync to TV</b> so the data
+        never gets ahead of the picture.
+      </div>
+
+      <div className="form-row" style={{ marginTop: 14 }}>
+        <span className="muted">Rehearse with a simulated live race:</span>
+        <select value={simKey} onChange={(e) => setSimKey(e.target.value ? Number(e.target.value) : '')}>
+          {cached.filter((c) => c.complete).map((c) => (
+            <option key={c.session_key} value={c.session_key}>
+              {c.year} {c.meeting_name} · {c.session_name}
+            </option>
+          ))}
+        </select>
+        <label className="muted">
+          from lap{' '}
+          <input type="number" min={1} max={80} value={fromLap} onChange={(e) => setFromLap(Number(e.target.value) || 1)} style={{ width: 56 }} className="lap-jump" />
+        </label>
+        <button className="btn" disabled={simKey === ''} onClick={simulate}>
+          Start simulation
+        </button>
+        {live?.source === 'simulation' && (
+          <button className="btn" onClick={stopSim}>
+            Stop
+          </button>
+        )}
+      </div>
+      {error && <div style={{ color: 'var(--red)', marginTop: 8 }}>{error}</div>}
+    </section>
   );
 }
 

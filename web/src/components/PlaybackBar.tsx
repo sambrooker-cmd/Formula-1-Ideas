@@ -1,5 +1,5 @@
-import { useEffect, useMemo } from 'react';
-import { clock, now } from '../sync/clock';
+import { useEffect, useMemo, useState } from 'react';
+import { clock, now, wallNow } from '../sync/clock';
 import { useNow, useSynced } from '../hooks';
 import type { SessionData, TrackStatusKind } from '../data/session';
 import { formatClock, leaderLap, trackStatusAt } from '../data/state';
@@ -35,15 +35,23 @@ export function StatusPill({ data, t }: { data: SessionData; t: number }) {
 export function PlaybackBar({ data, compact = false }: { data: SessionData; compact?: boolean }) {
   const synced = useSynced();
   const t = useNow(compact ? 6 : 15);
-  const { start, end, raceStart, totalLaps } = data.meta;
-  const span = end - start;
+  const { start, raceStart, totalLaps } = data.meta;
+  // Live: the timeline ends at "now minus the TV delay" and keeps growing.
+  const end = data.live ? wallNow() - data.meta.t0 - synced.delayMs : data.meta.end;
+  const span = Math.max(1, end - start);
   const lap = leaderLap(data, t);
 
-  // Stop at the end of the data. Every window does the same check, so it's harmless if several fire.
+  // Replays stop at the end of the data; live playback that catches up rejoins the live edge.
+  // Every window does the same check, so it's harmless if several fire.
   useEffect(() => {
+    if (data.live) {
+      if (!synced.live && t >= end) clock.goLive();
+      else if (t < start - 1000) clock.seek(start);
+      return;
+    }
     if (synced.playing && t >= end) clock.pause();
     if (t > end + 1000 || t < start - 1000) clock.seek(Math.min(end, Math.max(start, t)));
-  }, [t, synced.playing, end, start]);
+  }, [t, synced.playing, synced.live, end, start, data.live]);
 
   // Keyboard: space = play/pause, arrows = ±10 s (shift: ±60 s).
   useEffect(() => {
@@ -80,6 +88,14 @@ export function PlaybackBar({ data, compact = false }: { data: SessionData; comp
 
   return (
     <div className={'playback' + (compact ? ' compact' : '')}>
+      {data.live &&
+        (synced.live ? (
+          <span className="live-badge" title="Following the live session, held back by your TV delay">● LIVE</span>
+        ) : (
+          <button className="pb-btn live-btn" onClick={() => clock.goLive()} title="Jump back to live">
+            GO LIVE <span className="num">−{formatClock(end - t)}</span>
+          </button>
+        ))}
       <button className="pb-btn" title="Back 10 s (←)" onClick={() => clock.nudge(-10_000)}>
         ⟲
       </button>
@@ -122,11 +138,13 @@ export function PlaybackBar({ data, compact = false }: { data: SessionData; comp
       <span className="clock">
         {totalLaps > 0 && (
           <>
-            LAP <b>{Math.min(lap, totalLaps) || '–'}</b>/{totalLaps}{' '}
+            LAP <b>{Math.min(lap, totalLaps) || '–'}</b>
+            {!data.live && `/${totalLaps}`}{' '}
           </>
         )}
         · <b>{formatClock(sinceStart)}</b>
       </span>
+      {data.live && <TvDelay data={data} compact={compact} />}
       {!compact && (
         <>
           <select
@@ -156,5 +174,69 @@ export function PlaybackBar({ data, compact = false }: { data: SessionData; comp
         </select>
       )}
     </div>
+  );
+}
+
+/**
+ * TV delay: live data arrives a few seconds after the real event, but the TV picture is
+ * later still. Holding the data back by the difference keeps the pit wall from spoiling
+ * the TV. "Sync to TV" measures it: tap when you see the leader cross the line (or lights out).
+ */
+function TvDelay({ data, compact }: { data: SessionData; compact: boolean }) {
+  const { delayMs } = useSynced();
+  const [open, setOpen] = useState(false);
+  const [note, setNote] = useState('');
+
+  const tap = () => {
+    const tapReal = wallNow() - data.meta.t0; // when the tap happened, in session time
+    let crossing: number | null = null;
+    data.lapStartTimes.forEach((ls) => {
+      if (ls != null && ls <= tapReal - 500 && (crossing == null || ls > crossing)) crossing = ls;
+    });
+    if (crossing == null || tapReal - crossing > 120_000) {
+      setNote("Couldn't find a line crossing in the last 2 minutes of data. Try again at the next one.");
+      return;
+    }
+    const delay = tapReal - crossing;
+    clock.setDelay(delay);
+    clock.goLive();
+    setNote(`Your TV is ${(delay / 1000).toFixed(1)} s behind the real cars. All windows now match it.`);
+  };
+
+  const nudge = (ms: number) => clock.setDelay(delayMs + ms);
+
+  return (
+    <span className="tv-delay">
+      <button className="pb-btn" onClick={() => setOpen(!open)} title="Match the data to your TV picture">
+        📺 {compact ? '' : 'TV delay '}
+        <b className="num">{(delayMs / 1000).toFixed(1)}s</b>
+      </button>
+      {open && (
+        <div className="tv-pop" role="dialog">
+          <div className="tv-pop-title">Sync to your TV</div>
+          <p>
+            Watch the TV. The moment the <b>race leader crosses the start/finish line</b> (or the lights go out), press the
+            button.
+          </p>
+          <button className="btn primary big" onClick={tap}>
+            Leader crossed the line: NOW
+          </button>
+          {note && <p className="muted">{note}</p>}
+          <div className="tv-fine">
+            Fine-tune
+            <button className="btn" onClick={() => nudge(-1000)}>−1s</button>
+            <button className="btn" onClick={() => nudge(-250)}>−¼s</button>
+            <b className="num">{(delayMs / 1000).toFixed(2)} s</b>
+            <button className="btn" onClick={() => nudge(250)}>+¼s</button>
+            <button className="btn" onClick={() => nudge(1000)}>+1s</button>
+          </div>
+          <p className="dim">
+            Data ahead of the TV? Increase the delay. Behind? Decrease it. The setting is remembered for next time.
+            {delayMs < 3000 && ' Below ~3 s the live data itself may not have arrived yet.'}
+          </p>
+          <button className="icon-btn" onClick={() => setOpen(false)}>Close</button>
+        </div>
+      )}
+    </span>
   );
 }

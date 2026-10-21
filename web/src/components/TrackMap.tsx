@@ -53,7 +53,7 @@ export function TrackMap({ data, area }: { data: SessionData; area?: string }) {
     const pts: Pt[] = [];
     for (let i = 0; i < s.locT.length; i += 3) pts.push([s.locX[i], s.locY[i]]);
     return pts;
-  }, [data]);
+  }, [data, data.meta.outline]);
 
   // Rotation: automatic best fit, or a per-circuit override from the ↻ button (remembered in this browser).
   const rotKey = `pitwall.rotation.${data.meta.session.circuit}`;
@@ -207,7 +207,7 @@ export function TrackMap({ data, area }: { data: SessionData; area?: string }) {
         {data.meta.totalLaps > 0 && (
           <span className="num" style={{ fontSize: 22, fontWeight: 700 }}>
             {Math.min(lap, data.meta.totalLaps) || 0}
-            <span className="dim">/{data.meta.totalLaps}</span>
+            {!data.live && <span className="dim">/{data.meta.totalLaps}</span>}
           </span>
         )}
         <StatusPill data={data} t={t} />

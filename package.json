@@ -19,6 +19,7 @@
     "@fastify/websocket": "^11.3.4",
     "better-sqlite3": "^13.0.3",
     "fastify": "^5.12.7",
+    "mqtt": "^5.16.1",
     "react": "^19.3.1",
     "react-dom": "^19.3.1",
     "uplot": "^1.6.32"

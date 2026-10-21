@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, useSyncExternalStore } from 'react';
 import { clock, getState, now, subscribe } from './sync/clock';
-import { loadSession, type SessionData } from './data/session';
+import { applyDelta, loadLiveSnapshot, loadSession, type SessionData } from './data/session';
 
 export function useSynced() {
   return useSyncExternalStore(subscribe, getState);
@@ -32,9 +32,12 @@ export type SessionLoad =
   | { status: 'ready'; data: SessionData };
 
 export function useSessionData(): SessionLoad {
-  const { sessionKey } = useSynced();
+  const { sessionKey, source } = useSynced();
   const [load, setLoad] = useState<SessionLoad>({ status: 'none' });
+
+  // Replays: load the cached pack once.
   useEffect(() => {
+    if (source !== 'replay') return;
     if (sessionKey == null) {
       setLoad({ status: 'none' });
       return;
@@ -52,7 +55,64 @@ export function useSessionData(): SessionLoad {
     return () => {
       cancelled = true;
     };
-  }, [sessionKey]);
+  }, [sessionKey, source]);
+
+  // Live: snapshot, then apply deltas as they stream in. Deltas that arrive while the
+  // snapshot loads are queued; duplicates are ignored by applyDelta.
+  useEffect(() => {
+    if (source !== 'live') return;
+    let cancelled = false;
+    let data: SessionData | null = null;
+    let queue: Record<string, any[]>[] = [];
+    let ws: WebSocket | null = null;
+    let retry: ReturnType<typeof setTimeout> | undefined;
+    let generation = 0;
+
+    const fetchSnapshot = () => {
+      const mine = ++generation; // a newer snapshot request supersedes this one
+      data = null;
+      queue = [];
+      setLoad({ status: 'loading', loadedBytes: 0 });
+      loadLiveSnapshot((b) => !cancelled && mine === generation && setLoad({ status: 'loading', loadedBytes: b })).then(
+        (d) => {
+          if (cancelled || mine !== generation) return;
+          data = d;
+          for (const q of queue.splice(0)) applyDelta(d, q);
+          clock.setLiveT0(d.meta.t0);
+          setLoad({ status: 'ready', data: d });
+        },
+        (err) => {
+          if (cancelled || mine !== generation) return;
+          setLoad({ status: 'error', error: (err as Error).message + ' Waiting for one to start…' });
+          retry = setTimeout(fetchSnapshot, 15_000);
+        },
+      );
+    };
+
+    const connect = () => {
+      ws = new WebSocket(`${location.protocol === 'https:' ? 'wss' : 'ws'}://${location.host}/api/live/stream`);
+      ws.onmessage = (e) => {
+        const msg = JSON.parse(e.data);
+        if (msg.type === 'session') fetchSnapshot();
+        else if (msg.type === 'delta') {
+          if (data) applyDelta(data, msg.topics);
+          else queue.push(msg.topics);
+        }
+      };
+      ws.onclose = () => {
+        if (!cancelled) retry = setTimeout(() => (connect(), fetchSnapshot()), 3000);
+      };
+    };
+
+    connect();
+    fetchSnapshot();
+    return () => {
+      cancelled = true;
+      clearTimeout(retry);
+      ws?.close();
+    };
+  }, [source]);
+
   return load;
 }
 

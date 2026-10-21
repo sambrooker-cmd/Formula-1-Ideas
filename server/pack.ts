@@ -89,43 +89,28 @@ export function buildPack(sessionKey: number) {
       outline: all('SELECT x, y FROM track_outline ORDER BY seq') as PackMeta['outline'],
     };
 
-    // Samples: struct-of-arrays per driver.
-    const header: SamplesHeader = { arrays: [] };
-    const chunks: Buffer[] = [];
-    let offset = 0;
-    const push = (key: string, type: SamplesHeader['arrays'][number]['type'], arr: ArrayBufferView & { length: number }) => {
-      const buf = Buffer.from(arr.buffer, arr.byteOffset, arr.byteLength);
-      header.arrays.push({ key, type, offset, length: arr.length });
-      chunks.push(buf);
-      offset += buf.length;
-      const pad = (4 - (offset % 4)) % 4;
-      if (pad) {
-        chunks.push(Buffer.alloc(pad));
-        offset += pad;
-      }
-    };
-    for (const d of drivers) {
-      const loc = db.prepare('SELECT t, x, y FROM location WHERE driver_number = ? ORDER BY t').raw().all(d.number) as number[][];
-      push(`loc.${d.number}.t`, 'i32', Int32Array.from(loc, (r) => r[0] - t0));
-      push(`loc.${d.number}.x`, 'i32', Int32Array.from(loc, (r) => r[1]));
-      push(`loc.${d.number}.y`, 'i32', Int32Array.from(loc, (r) => r[2]));
-      const car = db
-        .prepare('SELECT t, speed, throttle, brake, rpm, gear, drs FROM car_data WHERE driver_number = ? ORDER BY t')
-        .raw()
-        .all(d.number) as (number | null)[][];
-      push(`car.${d.number}.t`, 'i32', Int32Array.from(car, (r) => r[0]! - t0));
-      push(`car.${d.number}.speed`, 'i16', Int16Array.from(car, (r) => r[1] ?? 0));
-      push(`car.${d.number}.throttle`, 'u8', Uint8Array.from(car, (r) => Math.min(255, r[2] ?? 0)));
-      push(`car.${d.number}.brake`, 'u8', Uint8Array.from(car, (r) => Math.min(255, r[3] ?? 0)));
-      push(`car.${d.number}.rpm`, 'u16', Uint16Array.from(car, (r) => r[4] ?? 0));
-      push(`car.${d.number}.gear`, 'u8', Uint8Array.from(car, (r) => r[5] ?? 0));
-      push(`car.${d.number}.drs`, 'u8', Uint8Array.from(car, (r) => (r[6] == null ? 255 : r[6])));
-    }
-    const headerBuf = Buffer.from(JSON.stringify(header));
-    const headerPad = (4 - ((4 + headerBuf.length) % 4)) % 4;
-    const lenBuf = Buffer.alloc(4);
-    lenBuf.writeUInt32LE(headerBuf.length + headerPad);
-    const samples = Buffer.concat([lenBuf, headerBuf, Buffer.alloc(headerPad, 0x20), ...chunks]);
+    const samples = encodeSamples(
+      drivers.map((d) => {
+        const loc = db.prepare('SELECT t, x, y FROM location WHERE driver_number = ? ORDER BY t').raw().all(d.number) as number[][];
+        const car = db
+          .prepare('SELECT t, speed, throttle, brake, rpm, gear, drs FROM car_data WHERE driver_number = ? ORDER BY t')
+          .raw()
+          .all(d.number) as (number | null)[][];
+        return {
+          number: d.number,
+          loc: { t: loc.map((r) => r[0] - t0), x: loc.map((r) => r[1]), y: loc.map((r) => r[2]) },
+          car: {
+            t: car.map((r) => r[0]! - t0),
+            speed: car.map((r) => r[1]),
+            throttle: car.map((r) => r[2]),
+            brake: car.map((r) => r[3]),
+            rpm: car.map((r) => r[4]),
+            gear: car.map((r) => r[5]),
+            drs: car.map((r) => r[6]),
+          },
+        };
+      }),
+    );
 
     const p = packPaths(sessionKey);
     fs.writeFileSync(p.meta, zlib.gzipSync(JSON.stringify(meta), { level: 6 }));
@@ -134,4 +119,49 @@ export function buildPack(sessionKey: number) {
   } finally {
     db.close();
   }
+}
+
+type Col = ArrayLike<number | null>;
+export interface DriverColumns {
+  number: number;
+  /** Times already relative to t0. */
+  loc: { t: Col; x: Col; y: Col };
+  car: { t: Col; speed: Col; throttle: Col; brake: Col; rpm: Col; gear: Col; drs: Col };
+}
+
+/** Binary samples layout (see shared/pack.ts): u32 header length, JSON header, 4-byte-aligned typed arrays. */
+export function encodeSamples(perDriver: DriverColumns[]) {
+  const header: SamplesHeader = { arrays: [] };
+  const chunks: Buffer[] = [];
+  let offset = 0;
+  const push = (key: string, type: SamplesHeader['arrays'][number]['type'], arr: ArrayBufferView & { length: number }) => {
+    const buf = Buffer.from(arr.buffer, arr.byteOffset, arr.byteLength);
+    header.arrays.push({ key, type, offset, length: arr.length });
+    chunks.push(buf);
+    offset += buf.length;
+    const pad = (4 - (offset % 4)) % 4;
+    if (pad) {
+      chunks.push(Buffer.alloc(pad));
+      offset += pad;
+    }
+  };
+  const n0 = (v: number | null) => v ?? 0;
+  for (const d of perDriver) {
+    const { loc, car } = d;
+    push(`loc.${d.number}.t`, 'i32', Int32Array.from(loc.t, n0));
+    push(`loc.${d.number}.x`, 'i32', Int32Array.from(loc.x, n0));
+    push(`loc.${d.number}.y`, 'i32', Int32Array.from(loc.y, n0));
+    push(`car.${d.number}.t`, 'i32', Int32Array.from(car.t, n0));
+    push(`car.${d.number}.speed`, 'i16', Int16Array.from(car.speed, n0));
+    push(`car.${d.number}.throttle`, 'u8', Uint8Array.from(car.throttle, (v) => Math.min(255, v ?? 0)));
+    push(`car.${d.number}.brake`, 'u8', Uint8Array.from(car.brake, (v) => Math.min(255, v ?? 0)));
+    push(`car.${d.number}.rpm`, 'u16', Uint16Array.from(car.rpm, n0));
+    push(`car.${d.number}.gear`, 'u8', Uint8Array.from(car.gear, n0));
+    push(`car.${d.number}.drs`, 'u8', Uint8Array.from(car.drs, (v) => (v == null ? 255 : v)));
+  }
+  const headerBuf = Buffer.from(JSON.stringify(header));
+  const headerPad = (4 - ((4 + headerBuf.length) % 4)) % 4;
+  const lenBuf = Buffer.alloc(4);
+  lenBuf.writeUInt32LE(headerBuf.length + headerPad);
+  return Buffer.concat([lenBuf, headerBuf, Buffer.alloc(headerPad, 0x20), ...chunks]);
 }

@@ -61,6 +61,33 @@ Each session is stored in `cache/session-<key>.sqlite` (about 35 MB per race) pl
 
 `npm run dev` also serves the app on your local network. Vite prints a `Network:` address when it starts, such as `http://192.168.1.20:5173`. Open `http://<that address>/map` on the TV or tablet. It joins the same session and follows the same clock through a small sync server, which also corrects for device clocks that disagree.
 
+## Live mode (with the TV)
+
+Live mode follows a session as it happens, using OpenF1's paid sponsor tier (€9.90/month). The pit wall is designed to run on a laptop or tablet next to the TV, kept in step with the picture.
+
+### Setup (once)
+
+1. Sponsor OpenF1 at https://openf1.org to get a login.
+2. Copy `.env.example` to `.env` and fill in `OPENF1_USERNAME` and `OPENF1_PASSWORD`. `.env` is git-ignored and your password stays on your computer: the server logs in, and browsers only talk to your server.
+3. Restart `npm run dev`. The **Live** card on the home page shows "Connected".
+
+With credentials set, downloads of past races also speed up to 50 requests a minute.
+
+### On race day
+
+1. When a session starts, the Live card shows it. If you start the app mid-session, it first loads everything so far.
+2. On the laptop or tablet, click **Open companion view**: map, timing and race control, sized for a screen beside the TV. Use **Full pit wall** if you want telemetry too.
+3. **Sync to TV:** click **📺 TV delay** in the playback bar, then press **Leader crossed the line: NOW** the moment you see the leader cross the start/finish line on the TV (lights out works too). The app measures how far your TV is behind the real cars and holds all the data back by exactly that much, so it never spoils what's about to happen on screen. Fine-tune with the ±¼ s and ±1 s buttons. The delay is remembered, so you'll usually only need to do it once per setup.
+4. **LIVE** means you're following the live edge (minus the TV delay). Pause or scrub back to rewatch something, then press **GO LIVE** to catch up.
+
+Every other window and device follows the same live clock and delay.
+
+### Rehearse with a simulated live race
+
+On the home page, under **Live**, choose a cached race and a starting lap and click **Start simulation**. The server feeds that race through exactly the same live pipeline as a real session, as if it were happening right now. It's useful for trying the companion view and TV sync before a race weekend. You can play a recording of that race on your Sky box and practise syncing to it.
+
+After a real session ends, download it normally (`npm run ingest` or the home page) to get the complete, cleaned-up replay with the circuit outline and final classification.
+
 ## How it works
 
 ```
@@ -73,6 +100,7 @@ OpenF1 ──(one throttled queue, 24 req/min)──▶ ingest ──▶ cache/s
                     BroadcastChannel (same computer) + WebSocket relay (LAN) ── shared clock
 ```
 
+- **Live** (`server/live.ts`): keeps the session in progress in memory. It's fed from OpenF1's MQTT stream, or from the simulator. Browsers load a snapshot in the same format as a replay pack, then receive updates 4 times a second over a WebSocket.
 - **Server** (`server/`, Fastify + SQLite):
   - `openf1.ts`: the only code that talks to OpenF1. It paces requests, retries with backoff, and splits a request into smaller time ranges if OpenF1 says it's too big.
   - `ingest.ts`: downloads a session and records each finished request so it can resume.
@@ -94,7 +122,8 @@ npm start   # builds the frontend and serves everything from http://localhost:87
 
 - **Car positions are sampled about 4 times a second** and smoothed in between. Lateral position isn't in the data.
 - **Team radio** comes from F1's servers and only a selection of clips is published. Coverage is much thinner from 2026.
-- **Live mode** (Phase 4 in the brief) needs the paid OpenF1 sponsor tier and isn't built yet.
+- **Live video can't be built in.** In the UK, Sky has the exclusive live rights (to 2034) and F1 TV Pro is blocked, so the video stays on your TV. The TV-delay sync is how the two are kept together.
+- **The real OpenF1 live feed hasn't been tested end to end yet** (it needs a sponsor login during a live session). The simulated feed exercises the same browser and server path.
 - **FastF1** now needs an F1 TV login, so it isn't used.
 
 ---

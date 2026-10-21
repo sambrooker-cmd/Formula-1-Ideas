@@ -4,3 +4,4 @@ cache/
 .env
 .env.*
 *.log
+!.env.example

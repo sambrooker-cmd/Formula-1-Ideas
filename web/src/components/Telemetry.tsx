@@ -53,7 +53,8 @@ export function Telemetry({ data, area }: { data: SessionData; area?: string }) 
   const drivers = (selected.length ? selected : leader != null ? [leader] : []).filter((n) => data.samples.has(n));
   const primary = drivers[0];
   const lap = primary != null ? currentLap(data, primary, t) : null;
-  const key = `${drivers.join(',')}|${lap?.lap}`;
+  // Live laps are still being driven: redraw the traces every couple of seconds.
+  const key = `${drivers.join(',')}|${lap?.lap}|${data.live ? Math.floor(t / 2000) : ''}`;
 
   const chartsRef = useRef<HTMLDivElement>(null);
   const plots = useRef<{ u: uPlot; marker: HTMLDivElement; marker2: HTMLDivElement }[]>([]);

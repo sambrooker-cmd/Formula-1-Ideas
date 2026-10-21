@@ -57,7 +57,16 @@ function WithSession({ children }: { children: (data: SessionData) => React.Reac
     );
   if (load.status === 'loading')
     return <div className="center-msg">Loading replay… {(load.loadedBytes / 1e6).toFixed(1)} MB</div>;
-  if (load.status === 'error') return <div className="center-msg">{load.error}</div>;
+  if (load.status === 'error')
+    return (
+      <div className="center-msg">
+        <div>
+          {load.error}
+          <br />
+          <a href="/">Back to sessions</a>
+        </div>
+      </div>
+    );
   return <>{children(load.data)}</>;
 }
 
@@ -74,6 +83,27 @@ function Wall() {
               <RaceControl data={data} area="rc" />
               <Telemetry data={data} area="tele" />
               <Strategy data={data} area="strategy" />
+            </div>
+            <PlaybackBar data={data} />
+          </>
+        )}
+      </WithSession>
+    </div>
+  );
+}
+
+/** For a laptop or tablet next to the TV: map, timing and race control, no telemetry (the TV has onboards). */
+function Companion() {
+  return (
+    <div className="page">
+      <WithSession>
+        {(data) => (
+          <>
+            <TopBar data={data} />
+            <div className="companion">
+              <TrackMap data={data} area="map" />
+              <TimingTower data={data} area="tower" />
+              <RaceControl data={data} area="rc" />
             </div>
             <PlaybackBar data={data} />
           </>
@@ -105,6 +135,7 @@ function App() {
   useSynced();
   const path = location.pathname.replace(/\/+$/, '') || '/';
   if (path === '/wall') return <Wall />;
+  if (path === '/companion') return <Companion />;
   if (SINGLE[path]) {
     document.title = `Pit Wall · ${path.slice(1)}`;
     return <Single Component={SINGLE[path]} />;

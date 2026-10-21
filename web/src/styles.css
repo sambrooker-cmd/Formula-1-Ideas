@@ -667,3 +667,101 @@ a {
   text-align: center;
   padding: 20px;
 }
+
+/* ---------- live ---------- */
+.live-badge {
+  background: var(--red);
+  color: #fff;
+  font-weight: 800;
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  padding: 6px 10px;
+  border-radius: 8px;
+  white-space: nowrap;
+  animation: pulse 2s ease-in-out infinite;
+}
+@keyframes pulse {
+  50% { opacity: 0.75; }
+}
+.live-btn {
+  color: var(--red);
+  font-weight: 800;
+  font-size: 11px;
+  gap: 6px;
+  white-space: nowrap;
+}
+.tv-delay {
+  position: relative;
+}
+.tv-delay .pb-btn {
+  gap: 6px;
+  white-space: nowrap;
+}
+.tv-pop {
+  position: absolute;
+  bottom: 42px;
+  right: 0;
+  width: 340px;
+  max-width: calc(100vw - 24px);
+  background: var(--panel);
+  border: 1px solid var(--line-2);
+  border-radius: 12px;
+  padding: 14px;
+  box-shadow: 0 12px 40px #000a;
+  z-index: 20;
+  display: grid;
+  gap: 10px;
+}
+.tv-pop p {
+  margin: 0;
+}
+.tv-pop-title {
+  font-weight: 700;
+  font-size: 14px;
+}
+.btn.big {
+  padding: 14px;
+  font-size: 15px;
+}
+.tv-fine {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  color: var(--muted);
+}
+.tv-fine .btn {
+  padding: 4px 8px;
+}
+.live-card {
+  border-color: #ff3b4e55;
+}
+.dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  margin-right: 6px;
+}
+
+/* ---------- companion (tablet / laptop next to the TV) ---------- */
+.companion {
+  flex: 1;
+  min-height: 0;
+  padding: 8px;
+  display: grid;
+  gap: 8px;
+  grid-template-columns: minmax(0, 1.25fr) minmax(340px, 1fr);
+  grid-template-rows: minmax(0, 1fr) minmax(170px, 0.38fr);
+  grid-template-areas:
+    'map tower'
+    'rc tower';
+}
+@media (max-width: 760px) {
+  .companion {
+    grid-template-columns: 1fr;
+    grid-template-rows: 45vh auto 300px;
+    grid-template-areas: 'map' 'tower' 'rc';
+    overflow: auto;
+  }
+}

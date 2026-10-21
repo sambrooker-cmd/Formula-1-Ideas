@@ -3,6 +3,8 @@
 // session, selected drivers). Each window then computes the current time itself:
 //   now = anchorT + (wallNow() - anchorWall) * speed
 // so nothing streams per frame and all windows stay in step.
+// When following a live session the time is instead pinned to the wall clock,
+// held back by the TV delay:  now = wallNow() - liveT0 - delayMs
 
 export interface SyncedState {
   sessionKey: number | null;
@@ -14,9 +16,19 @@ export interface SyncedState {
   anchorWall: number;
   /** Up to two highlighted drivers (telemetry, map highlight). */
   selected: number[];
+  /** 'live' = the session currently streaming from OpenF1 (or a simulation of one). */
+  source: 'replay' | 'live';
+  /** Following the live edge (rather than paused or scrubbed back). */
+  live: boolean;
+  /** Epoch ms that live session times are relative to. */
+  liveT0: number;
+  /** How far behind real time to show live data, to match the TV picture. */
+  delayMs: number;
   /** Last-writer-wins version. */
   rev: number;
 }
+
+export const DEFAULT_DELAY_MS = 8000;
 
 type Msg = { type: 'state'; state: SyncedState; src: string } | { type: 'hello'; src: string };
 
@@ -42,6 +54,10 @@ function initialState(): SyncedState {
     anchorT: sameSession && typeof saved.anchorT === 'number' ? saved.anchorT : NaN,
     anchorWall: wallNow(),
     selected: sameSession ? saved.selected ?? [] : [],
+    source: fromUrl ? 'replay' : saved.source ?? 'replay',
+    live: !fromUrl && saved.source === 'live',
+    liveT0: saved.liveT0 ?? NaN,
+    delayMs: saved.delayMs ?? DEFAULT_DELAY_MS,
     rev: 0,
   };
 }
@@ -60,6 +76,7 @@ export function subscribe(fn: () => void) {
 
 /** Current session time in ms (pack-relative). */
 export function now(s: SyncedState = state) {
+  if (s.source === 'live' && s.live) return wallNow() - s.liveT0 - s.delayMs;
   return s.playing ? s.anchorT + (wallNow() - s.anchorWall) * s.speed : s.anchorT;
 }
 
@@ -80,15 +97,22 @@ function update(patch: Partial<SyncedState>) {
   apply({ ...state, anchorT: t, anchorWall: wallNow(), ...patch, rev: Math.max(wallNow(), state.rev + 1) }, true);
 }
 
+// Any manual playback control drops out of "following live" (Go live brings it back).
 export const clock = {
   play: () => !state.playing && update({ playing: true }),
-  pause: () => state.playing && update({ playing: false }),
-  toggle: () => update({ playing: !state.playing }),
-  seek: (t: number) => update({ anchorT: t }),
-  nudge: (ms: number) => update({ anchorT: now() + ms }),
-  setSpeed: (speed: number) => update({ speed }),
+  pause: () => (state.playing || state.live) && update({ playing: false, live: false }),
+  toggle: () => (state.live ? update({ playing: false, live: false }) : update({ playing: !state.playing })),
+  seek: (t: number) => update({ anchorT: t, live: false }),
+  nudge: (ms: number) => update({ anchorT: now() + ms, live: false }),
+  setSpeed: (speed: number) => update({ speed, live: false }),
   setSession: (sessionKey: number) =>
-    update({ sessionKey, anchorT: NaN, playing: false, selected: [] }),
+    update({ sessionKey, source: 'replay', live: false, anchorT: NaN, playing: false, selected: [] }),
+  /** Switch every window to the live session, following the live edge. */
+  openLive: () => update({ source: 'live', live: true, playing: true, speed: 1, selected: [] }),
+  goLive: () => update({ live: true, playing: true, speed: 1 }),
+  setDelay: (delayMs: number) => update({ delayMs: Math.max(0, Math.round(delayMs)) }),
+  /** Called when a live snapshot loads: pins the time base all windows share. */
+  setLiveT0: (t0: number) => state.liveT0 !== t0 && update({ liveT0: t0 }),
   toggleSelected: (driver: number) => {
     const has = state.selected.includes(driver);
     const selected = has ? state.selected.filter((d) => d !== driver) : [...state.selected, driver].slice(-2);

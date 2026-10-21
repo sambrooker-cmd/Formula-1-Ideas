@@ -8,6 +8,8 @@ import { listCachedSessions } from './db.ts';
 import { ensurePack } from './pack.ts';
 import { ingestSession, type Progress } from './ingest.ts';
 import { get } from './openf1.ts';
+import zlib from 'node:zlib';
+import { addClient, liveMeta, liveSamples, liveState, startLiveFeed, startSimulation, stopSimulation } from './live.ts';
 
 const PORT = Number(process.env.PORT ?? 8787);
 const app = Fastify({ logger: { level: 'warn' } });
@@ -85,6 +87,40 @@ app.post<{ Body: { sessionKey: number } }>('/api/ingest', async (req, reply) => 
 
 app.get('/api/ingest', async () => jobs.slice(-10));
 
+// ---- live mode ---------------------------------------------------------------
+
+app.get('/api/live', async () => liveState());
+
+app.get('/api/live/meta', async (_req, reply) => {
+  const meta = liveMeta();
+  if (!meta) return reply.code(404).send({ error: 'No live session' });
+  return reply.header('content-type', 'application/json').header('content-encoding', 'gzip').header('cache-control', 'no-store')
+    .send(zlib.gzipSync(JSON.stringify(meta), { level: 1 }));
+});
+
+app.get('/api/live/samples', async (_req, reply) => {
+  const buf = liveSamples();
+  if (!buf) return reply.code(404).send({ error: 'No live session' });
+  return reply.header('content-type', 'application/octet-stream').header('content-encoding', 'gzip').header('cache-control', 'no-store')
+    .send(zlib.gzipSync(buf, { level: 1 }));
+});
+
+app.get('/api/live/stream', { websocket: true }, (socket) => addClient(socket));
+
+app.post<{ Body: { sessionKey: number; fromLap?: number; speed?: number } }>('/api/live/simulate', async (req, reply) => {
+  try {
+    startSimulation(Number(req.body.sessionKey), Number(req.body.fromLap ?? 1), Number(req.body.speed ?? 1));
+    return liveState();
+  } catch (err) {
+    return reply.code(400).send({ error: (err as Error).message });
+  }
+});
+
+app.post('/api/live/stop', async () => {
+  stopSimulation();
+  return liveState();
+});
+
 // ---- sync relay: lets other devices on the LAN follow the same clock ------
 
 const peers = new Set<WebSocket>();
@@ -118,4 +154,5 @@ if ((process.env.NODE_ENV === 'production' || process.argv.includes('--productio
 }
 
 await app.listen({ port: PORT, host: '0.0.0.0' });
+void startLiveFeed();
 console.log(`Pit wall API listening on http://localhost:${PORT}`);
