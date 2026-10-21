@@ -70,7 +70,7 @@ export async function ingestSession(sessionKey: number, onProgress: (p: Progress
       ['position', async () => storeSimple(db, 'position', await get('position', sk), (r) => [r.driver_number, ms(r.date), r.position])],
       ['stints', async () => storeSimple(db, 'stint', await get('stints', sk), (r) => [r.driver_number, r.stint_number, r.lap_start, r.lap_end, r.compound, r.tyre_age_at_start])],
       ['pit', async () => storeSimple(db, 'pit', await get('pit', sk), (r) => [r.driver_number, ms(r.date), r.lap_number, r.pit_duration, r.lane_duration ?? null, r.stop_duration ?? null])],
-      ['race_control', async () => storeSimple(db, 'race_control', await get('race_control', sk), (r) => [ms(r.date), r.lap_number, r.category, r.flag, r.scope, r.sector, r.driver_number, r.message])],
+      ['race_control', async () => storeSimple(db, 'race_control', await get('race_control', sk), (r) => [ms(r.date), r.lap_number, r.category, r.flag, r.scope, r.sector, r.driver_number, r.message, r.qualifying_phase ?? null])],
       ['weather', async () => storeSimple(db, 'weather', await get('weather', sk), (r) => [ms(r.date), r.air_temperature, r.track_temperature, r.humidity, r.pressure, r.rainfall, r.wind_speed, r.wind_direction])],
       ['team_radio', async () => storeSimple(db, 'team_radio', await get('team_radio', sk), (r) => [r.driver_number, ms(r.date), r.recording_url])],
       ['overtakes', async () => storeSimple(db, 'overtake', await get('overtakes', sk), (r) => [ms(r.date), r.overtaking_driver_number, r.overtaken_driver_number, r.position])],
@@ -168,12 +168,17 @@ function storeDrivers(db: SessionDb, rows: Row[]) {
 }
 
 function storeLaps(db: SessionDb, rows: Row[]) {
-  const stmt = db.prepare('INSERT OR REPLACE INTO lap VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)');
+  const stmt = db.prepare(
+    `INSERT OR REPLACE INTO lap (driver_number, lap, t_start, duration, s1, s2, s3, i1_speed, i2_speed, st_speed, pit_out, segments)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+  );
   db.transaction(() => {
     for (const r of rows) {
       stmt.run(
         r.driver_number, r.lap_number, ms(r.date_start), r.lap_duration, r.duration_sector_1, r.duration_sector_2,
         r.duration_sector_3, r.i1_speed, r.i2_speed, r.st_speed, r.is_pit_out_lap ? 1 : 0,
+        // mini-sector colour codes per sector, e.g. [[2049,2051],[2048,...],[...]]
+        r.segments_sector_1 ? JSON.stringify([r.segments_sector_1, r.segments_sector_2 ?? [], r.segments_sector_3 ?? []]) : null,
       );
     }
   })();

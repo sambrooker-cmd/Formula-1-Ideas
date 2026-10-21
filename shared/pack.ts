@@ -2,7 +2,7 @@
 // All times are integer milliseconds relative to `t0` (an epoch ms reference).
 // Event lists are compact tuples rather than objects to keep the payload small.
 
-export const PACK_VERSION = 1;
+export const PACK_VERSION = 2;
 
 export interface PackMeta {
   version: number;
@@ -25,8 +25,8 @@ export interface PackMeta {
   raceEnd: number;
   totalLaps: number;
   drivers: PackDriver[];
-  /** [driver, lap, tStart, duration s, s1, s2, s3, pitOut 0/1] */
-  laps: [number, number, number | null, number | null, number | null, number | null, number | null, number][];
+  /** [driver, lap, tStart, duration s, s1, s2, s3, pitOut 0/1, mini-sector codes per sector (2048 yellow, 2049 green, 2051 purple, 2064 pit) or null] */
+  laps: [number, number, number | null, number | null, number | null, number | null, number | null, number, (number | null)[][] | null][];
   /** [driver, t, gap s, gapText, interval s, intervalText] */
   intervals: [number, number, number | null, string | null, number | null, string | null][];
   /** [driver, t, position] — change events only */
@@ -35,8 +35,8 @@ export interface PackMeta {
   stints: [number, number, number, number | null, string | null, number | null][];
   /** [driver, t, lap, pitDuration, laneDuration, stopDuration] */
   pits: [number, number, number | null, number | null, number | null, number | null][];
-  /** [t, lap, category, flag, scope, sector, driver, message] */
-  raceControl: [number, number | null, string | null, string | null, string | null, number | null, number | null, string][];
+  /** [t, lap, category, flag, scope, sector, driver, message, qualifying phase 1–3 or null] */
+  raceControl: [number, number | null, string | null, string | null, string | null, number | null, number | null, string, number | null][];
   /** [t, air, track, humidity, pressure, rainfall, windSpeed, windDir] */
   weather: [number, number, number, number, number, number, number, number][];
   /** [driver, t, url] */

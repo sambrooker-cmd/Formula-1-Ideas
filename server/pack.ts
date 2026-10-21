@@ -60,8 +60,8 @@ export function buildPack(sessionKey: number) {
       raceEnd: rel(s.race_end)!,
       totalLaps: (db.prepare('SELECT MAX(lap) n FROM lap').get() as Row).n ?? 0,
       drivers,
-      laps: all('SELECT driver_number, lap, t_start, duration, s1, s2, s3, pit_out FROM lap ORDER BY driver_number, lap').map(
-        (r) => [r[0], r[1], rel(r[2]), r[3], r[4], r[5], r[6], r[7]],
+      laps: all('SELECT driver_number, lap, t_start, duration, s1, s2, s3, pit_out, segments FROM lap ORDER BY driver_number, lap').map(
+        (r) => [r[0], r[1], rel(r[2]), r[3], r[4], r[5], r[6], r[7], r[8] ? JSON.parse(r[8]) : null],
       ) as PackMeta['laps'],
       intervals: all('SELECT driver_number, t, gap, gap_text, interval, interval_text FROM interval_sample ORDER BY t').map(
         (r) => [r[0], rel(r[1]), r[2], r[3], r[4], r[5]],
@@ -71,7 +71,7 @@ export function buildPack(sessionKey: number) {
       pits: all('SELECT driver_number, t, lap, pit_duration, lane_duration, stop_duration FROM pit ORDER BY t').map(
         (r) => [r[0], rel(r[1]), r[2], r[3], r[4], r[5]],
       ) as PackMeta['pits'],
-      raceControl: all('SELECT t, lap, category, flag, scope, sector, driver_number, message FROM race_control ORDER BY t').map(
+      raceControl: all('SELECT t, lap, category, flag, scope, sector, driver_number, message, qualifying_phase FROM race_control ORDER BY t').map(
         (r) => [rel(r[0]), ...r.slice(1)],
       ) as PackMeta['raceControl'],
       weather: all('SELECT * FROM weather ORDER BY t').map((r) => [rel(r[0]), ...r.slice(1)]) as PackMeta['weather'],

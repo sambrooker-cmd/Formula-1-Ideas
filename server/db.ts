@@ -50,6 +50,14 @@ export function openSessionDb(sessionKey: number, { create = false } = {}) {
   const db = new Database(file);
   db.pragma('journal_mode = WAL');
   db.exec(SCHEMA);
+  // Columns added after the first release; older cache files get them (empty) on open.
+  for (const sql of ['ALTER TABLE lap ADD COLUMN segments TEXT', 'ALTER TABLE race_control ADD COLUMN qualifying_phase INT']) {
+    try {
+      db.exec(sql);
+    } catch {
+      // already there
+    }
+  }
   return db;
 }
 

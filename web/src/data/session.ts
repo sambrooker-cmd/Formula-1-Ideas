@@ -29,6 +29,8 @@ export interface Lap {
   s2: number | null;
   s3: number | null;
   pitOut: boolean;
+  /** Mini-sector colour codes per sector (2048 yellow, 2049 green, 2051 purple, 2064 pit lane), if known. */
+  segments: (number | null)[][] | null;
 }
 
 export interface Series {
@@ -195,7 +197,7 @@ function index(meta: PackMeta, buf: ArrayBuffer): SessionData {
   for (const [n, rows] of group(meta.laps, (r) => r[0])) {
     const list = rows
       .filter((r) => r[2] != null)
-      .map((r) => ({ lap: r[1], t: r[2]!, end: 0, duration: r[3], s1: r[4], s2: r[5], s3: r[6], pitOut: !!r[7] }))
+      .map((r) => ({ lap: r[1], t: r[2]!, end: 0, duration: r[3], s1: r[4], s2: r[5], s3: r[6], pitOut: !!r[7], segments: r[8] ?? null }))
       .sort((a, b) => a.t - b.t);
     fixLapEnds(list);
     laps.set(n, list);
@@ -328,7 +330,7 @@ export function applyDelta(data: SessionData, topics: Record<string, any[]>) {
   for (const r of (topics.laps ?? []) as PackMeta['laps']) {
     if (r[2] == null) continue;
     const list = data.laps.get(r[0]) ?? [];
-    const lap: Lap = { lap: r[1], t: r[2], end: 0, duration: r[3], s1: r[4], s2: r[5], s3: r[6], pitOut: !!r[7] };
+    const lap: Lap = { lap: r[1], t: r[2], end: 0, duration: r[3], s1: r[4], s2: r[5], s3: r[6], pitOut: !!r[7], segments: r[8] ?? null };
     const i = list.findIndex((l) => l.lap === lap.lap);
     if (i >= 0) list[i] = lap;
     else list.push(lap);

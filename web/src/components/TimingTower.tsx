@@ -3,6 +3,9 @@ import { formatLapTime, overallBestAt, tower } from '../data/state';
 import { clock } from '../sync/clock';
 import { useNow, useSynced } from '../hooks';
 import { Panel } from './Panel';
+import { isQualifying } from '../data/quali';
+import { QualiTower } from './QualiTower';
+import type { ReactNode } from 'react';
 
 export function Tyre({ compound, age }: { compound: string | null; age?: number | null }) {
   const letter = compound ? compound[0] : '?';
@@ -16,7 +19,12 @@ export function Tyre({ compound, age }: { compound: string | null; age?: number 
   );
 }
 
-export function TimingTower({ data, area }: { data: SessionData; area?: string }) {
+/** Race timing, or the qualifying knockout view for qualifying sessions. */
+export function TimingTower(props: { data: SessionData; area?: string; lead?: ReactNode }) {
+  return isQualifying(props.data) ? <QualiTower {...props} /> : <RaceTower {...props} />;
+}
+
+function RaceTower({ data, area, lead }: { data: SessionData; area?: string; lead?: ReactNode }) {
   const t = useNow(8);
   const { selected } = useSynced();
   const rows = tower(data, t);
@@ -24,7 +32,7 @@ export function TimingTower({ data, area }: { data: SessionData; area?: string }
   const race = data.meta.session.type === 'Race';
 
   return (
-    <Panel title="Timing" area={area} popout="/tower" bodyClass="scroll" extra={<span>{data.meta.session.name}</span>}>
+    <Panel title="Timing" lead={lead} area={area} popout="/tower" bodyClass="scroll" extra={<span>{data.meta.session.name}</span>}>
       <table className="tower">
         <thead>
           <tr>

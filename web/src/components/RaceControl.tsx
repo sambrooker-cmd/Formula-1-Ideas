@@ -20,7 +20,7 @@ type Item =
   | { kind: 'rc'; t: number; lap: number | null; category: string | null; flag: string | null; message: string }
   | { kind: 'radio'; t: number; driver: number; url: string };
 
-export function RaceControl({ data, area }: { data: SessionData; area?: string }) {
+export function RaceControl({ data, area, lead }: { data: SessionData; area?: string; lead?: React.ReactNode }) {
   const t = useNow(4);
   const [showRadio, setShowRadio] = useState(true);
   const audio = useRef<HTMLAudioElement | null>(null);
@@ -50,6 +50,7 @@ export function RaceControl({ data, area }: { data: SessionData; area?: string }
   return (
     <Panel
       title="Race control"
+      lead={lead}
       area={area}
       popout="/race-control"
       bodyClass="scroll"

@@ -126,6 +126,7 @@ class LiveStore {
         const tuple: PackMeta['laps'][number] = [
           r.driver_number, r.lap_number, this.rel(r.date_start), r.lap_duration ?? null,
           r.duration_sector_1 ?? null, r.duration_sector_2 ?? null, r.duration_sector_3 ?? null, r.is_pit_out_lap ? 1 : 0,
+          r.segments_sector_1 ? [r.segments_sector_1, r.segments_sector_2 ?? [], r.segments_sector_3 ?? []] : null,
         ];
         this.laps.set(`${r.driver_number}:${r.lap_number}`, tuple); // later versions of a lap replace earlier ones
         return this.emit('laps', tuple);
@@ -155,6 +156,7 @@ class LiveStore {
       case 'race_control': {
         const tuple: PackMeta['raceControl'][number] = [
           this.rel(r.date)!, r.lap_number ?? null, r.category ?? null, r.flag ?? null, r.scope ?? null, r.sector ?? null, r.driver_number ?? null, r.message ?? '',
+          r.qualifying_phase ?? null,
         ];
         this.raceControl.push(tuple);
         return this.emit('raceControl', tuple);

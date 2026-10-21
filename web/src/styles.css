@@ -957,3 +957,157 @@ a {
   padding: 3px 9px;
   font-size: 12px;
 }
+
+/* ---------- key moments ---------- */
+.moment-filters {
+  display: flex;
+  gap: 6px;
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--line);
+  flex-wrap: wrap;
+  align-items: center;
+  position: sticky;
+  top: 0;
+  background: var(--panel);
+  z-index: 1;
+}
+.chip {
+  background: transparent;
+  border: 1px solid var(--line-2);
+  border-radius: 999px;
+  padding: 2px 10px;
+  font-size: 12px;
+  color: var(--muted);
+}
+.chip.on {
+  background: var(--text);
+  color: var(--bg);
+  border-color: var(--text);
+  font-weight: 600;
+}
+.icon-btn.active {
+  color: var(--accent);
+  border-color: var(--accent);
+}
+.moments {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.moment {
+  display: grid;
+  grid-template-columns: 26px minmax(0, 1fr) auto;
+  gap: 8px;
+  align-items: center;
+  padding: 7px 10px;
+  border-bottom: 1px solid #ffffff08;
+  cursor: pointer;
+}
+.moment:hover {
+  background: #ffffff08;
+}
+.moment.w1 .moment-text {
+  color: var(--muted);
+}
+.moment.w3 .moment-text {
+  font-weight: 600;
+}
+.moment.ahead {
+  opacity: 0.45;
+}
+.moment.k-flag .moment-text,
+.moment.k-retire .moment-text {
+  color: var(--sc);
+}
+.moment-icon {
+  text-align: center;
+}
+.moment-dots {
+  display: inline-flex;
+  gap: 2px;
+  margin-right: 6px;
+  vertical-align: 1px;
+}
+.moment-dots i {
+  width: 4px;
+  height: 12px;
+  border-radius: 2px;
+  display: inline-block;
+}
+
+/* ---------- lap charts ---------- */
+.chart-host {
+  position: absolute;
+  inset: 4px 4px 0 0;
+}
+.wear {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+}
+.wear .chart-host {
+  position: relative;
+  inset: auto;
+  flex: 1;
+  min-height: 120px;
+}
+.wear-table {
+  border-top: 1px solid var(--line);
+}
+
+/* ---------- qualifying ---------- */
+.q-pill {
+  font-size: 11px;
+  font-weight: 700;
+  padding: 1px 7px;
+  border-radius: 5px;
+  border: 1px solid var(--line-2);
+  color: var(--dim);
+}
+.q-pill.on {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+}
+.q-pill.done {
+  color: var(--muted);
+}
+.tower tr.danger td {
+  background: #ff3b4e12;
+}
+.tower tr.cut td {
+  border-bottom: 2px solid var(--red);
+}
+.tower tr.first-out td {
+  border-top: 1px solid var(--line-2);
+}
+.minis {
+  display: inline-flex;
+  gap: 3px;
+}
+.minis-sector {
+  display: inline-flex;
+  gap: 1px;
+}
+.minis i {
+  width: 4px;
+  height: 12px;
+  border-radius: 1px;
+  background: var(--line-2);
+}
+.minis i.y { background: var(--yellow); }
+.minis i.g { background: var(--green); }
+.minis i.p { background: var(--purple); }
+.minis i.pit { background: #3b4658; }
+.wear-table-wrap {
+  max-height: 45%;
+  overflow: auto;
+}
+.tabs button {
+  white-space: nowrap;
+}
+.panel-head {
+  flex-wrap: wrap;
+  row-gap: 6px;
+}

@@ -13,7 +13,7 @@ const COMPOUND: Record<string, string> = {
 };
 
 /** Stints as coloured bars per driver, ordered by the current running order. */
-export function Strategy({ data, area }: { data: SessionData; area?: string }) {
+export function Strategy({ data, area, lead }: { data: SessionData; area?: string; lead?: React.ReactNode }) {
   const t = useNow(2);
   const { selected } = useSynced();
   const [ref, size] = useElementSize<HTMLDivElement>();
@@ -26,7 +26,7 @@ export function Strategy({ data, area }: { data: SessionData; area?: string }) {
   const x = (l: number) => labelW + ((l - 1) / total) * plotW;
 
   return (
-    <Panel title="Tyre strategy" area={area} popout="/strategy">
+    <Panel title="Tyre strategy" lead={lead} area={area} popout="/strategy">
       <div ref={ref} style={{ position: 'absolute', inset: '6px 8px 4px 4px' }}>
         {size.width > 0 && (
           <svg width={size.width} height={rows.length * rowH + 20} style={{ display: 'block' }}>

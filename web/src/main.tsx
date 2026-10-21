@@ -11,7 +11,9 @@ import { RaceControl } from './components/RaceControl';
 import { Telemetry } from './components/Telemetry';
 import { Strategy } from './components/Strategy';
 import { LapCompare } from './components/LapCompare';
-import { useState } from 'react';
+import { KeyMoments } from './components/KeyMoments';
+import { PositionChart, RaceTrace, TyreWear } from './components/RaceCharts';
+import { Tabbed } from './components/Tabbed';
 
 type PanelComponent = ComponentType<{ data: SessionData; area?: string }>;
 
@@ -22,32 +24,39 @@ const SINGLE: Record<string, PanelComponent> = {
   '/race-control': RaceControl,
   '/strategy': Strategy,
   '/compare': LapCompare,
+  '/moments': KeyMoments,
+  '/race-trace': RaceTrace,
+  '/positions': PositionChart,
+  '/tyre-wear': TyreWear,
 };
 
-/** Bottom-left of the pit wall: live telemetry or the fastest-lap comparison (remembered per browser). */
-function AnalysisPanel({ data }: { data: SessionData }) {
-  const [tab, setTab] = useState<'tele' | 'compare'>(() => {
-    try {
-      return localStorage.getItem('pitwall.analysis') === 'compare' ? 'compare' : 'tele';
-    } catch {
-      return 'tele';
-    }
-  });
-  const choose = (next: 'tele' | 'compare') => {
-    setTab(next);
-    try {
-      localStorage.setItem('pitwall.analysis', next);
-    } catch {
-      // ignore
-    }
-  };
-  const lead = (
-    <span className="tabs">
-      <button className={tab === 'tele' ? 'on' : ''} onClick={() => choose('tele')}>Telemetry</button>
-      <button className={tab === 'compare' ? 'on' : ''} onClick={() => choose('compare')}>Fastest laps</button>
-    </span>
+/** Pit wall bottom-left: telemetry and the lap-by-lap analysis charts. */
+function AnalysisTabs({ data }: { data: SessionData }) {
+  return (
+    <Tabbed
+      storageKey="pitwall.tab.analysis"
+      tabs={[
+        { id: 'tele', label: 'Telemetry', render: (lead) => <Telemetry data={data} area="tele" lead={lead} /> },
+        { id: 'compare', label: 'Fastest laps', render: (lead) => <LapCompare data={data} area="tele" lead={lead} /> },
+        { id: 'trace', label: 'Race trace', render: (lead) => <RaceTrace data={data} area="tele" lead={lead} /> },
+        { id: 'positions', label: 'Positions', render: (lead) => <PositionChart data={data} area="tele" lead={lead} /> },
+        { id: 'wear', label: 'Tyre wear', render: (lead) => <TyreWear data={data} area="tele" lead={lead} /> },
+      ]}
+    />
   );
-  return tab === 'tele' ? <Telemetry data={data} area="tele" lead={lead} /> : <LapCompare data={data} area="tele" lead={lead} />;
+}
+
+/** Race control messages, or the key moments list. */
+function ControlTabs({ data, area = 'rc' }: { data: SessionData; area?: string }) {
+  return (
+    <Tabbed
+      storageKey="pitwall.tab.control"
+      tabs={[
+        { id: 'messages', label: 'Messages', render: (lead) => <RaceControl data={data} area={area} lead={lead} /> },
+        { id: 'moments', label: 'Moments', render: (lead) => <KeyMoments data={data} area={area} lead={lead} /> },
+      ]}
+    />
+  );
 }
 
 function TopBar({ data }: { data?: SessionData }) {
@@ -109,8 +118,8 @@ function Wall() {
             <div className="wall">
               <TrackMap data={data} area="map" />
               <TimingTower data={data} area="tower" />
-              <RaceControl data={data} area="rc" />
-              <AnalysisPanel data={data} />
+              <ControlTabs data={data} />
+              <AnalysisTabs data={data} />
               <Strategy data={data} area="strategy" />
             </div>
             <PlaybackBar data={data} />
@@ -132,7 +141,7 @@ function Companion() {
             <div className="companion">
               <TrackMap data={data} area="map" />
               <TimingTower data={data} area="tower" />
-              <RaceControl data={data} area="rc" />
+              <ControlTabs data={data} />
             </div>
             <PlaybackBar data={data} />
           </>
