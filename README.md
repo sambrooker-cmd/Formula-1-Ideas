@@ -13,7 +13,18 @@ Every panel can open in its own window, on any screen or any device on your Wi-F
 
 See [`BRIEF.md`](BRIEF.md) for the project brief and [`docs/PHASE0_FINDINGS.md`](docs/PHASE0_FINDINGS.md) for the data research.
 
-## Setup
+## Easy start on a Mac (no terminal)
+
+1. Install **Node.js** (the LTS version) from nodejs.org.
+2. Download this project as a ZIP from GitHub and unzip it. If you want it to start automatically (step 4), move the folder into your **home folder** first.
+3. Double-click **Start Pit Wall**. The first time it installs what it needs (about a minute), then opens Pit Wall in your browser. Keep that window open while you use it; close it to stop.
+4. Optional: double-click **Start automatically at login** once. Pit Wall then runs in the background whenever your Mac is on, so you just open the bookmark. **Stop starting automatically** turns it off.
+
+The first time you open one of these files, macOS may say it can't verify the developer. Go to **System Settings → Privacy & Security**, scroll down, click **Open Anyway** next to the file's name, then double-click it again. If macOS asks whether `node` may accept incoming connections, click **Allow**: your iPad needs this to connect.
+
+**On your iPad:** open the address the window shows, for example `http://Your-Mac.local:8787/companion`. It uses your Mac's name, so it keeps working when the Wi-Fi gives the Mac a new number. In Safari, tap **Share → Add to Home Screen** and Pit Wall gets its own icon and opens full screen like an app. The **Linked** indicator in the playback bar shows whether a screen is following the others.
+
+## Setup (developers)
 
 You need **Node.js 22.13 or newer**: the LTS download from nodejs.org is fine. Nothing needs compiling, so you don't need Python or Xcode tools.
 

@@ -783,3 +783,8 @@ a {
 .link-chip.alone .dot { background: var(--yellow); }
 .link-chip.off { color: var(--red); border-color: #ff3b4e66; }
 .link-chip.off .dot { background: var(--red); }
+
+/* Full-screen from the iPad/iPhone home screen: keep content clear of the status bar and home indicator. */
+#root {
+  padding: env(safe-area-inset-top, 0px) env(safe-area-inset-right, 0px) env(safe-area-inset-bottom, 0px) env(safe-area-inset-left, 0px);
+}
