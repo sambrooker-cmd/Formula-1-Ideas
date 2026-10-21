@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useState } from 'react';
-import { clock, now, wallNow } from '../sync/clock';
+import { useEffect, useMemo, useState, useSyncExternalStore } from 'react';
+import { clock, getLink, now, subscribeLink, wallNow } from '../sync/clock';
 import { useNow, useSynced } from '../hooks';
 import type { SessionData, TrackStatusKind } from '../data/session';
 import { formatClock, leaderLap, trackStatusAt } from '../data/state';
@@ -144,6 +144,7 @@ export function PlaybackBar({ data, compact = false }: { data: SessionData; comp
         )}
         · <b>{formatClock(sinceStart)}</b>
       </span>
+      <LinkChip />
       {data.live && <TvDelay data={data} compact={compact} />}
       {!compact && (
         <>
@@ -237,6 +238,26 @@ function TvDelay({ data, compact }: { data: SessionData; compact: boolean }) {
           <button className="icon-btn" onClick={() => setOpen(false)}>Close</button>
         </div>
       )}
+    </span>
+  );
+}
+
+/** Shows whether this screen is linked to the others (other windows and devices on the Wi-Fi). */
+function LinkChip() {
+  const link = useSyncExternalStore(subscribeLink, getLink);
+  const others = Math.max(0, link.peers - 1);
+  const label = !link.connected ? 'Not linked' : others === 0 ? 'Linked · no other screens' : `Linked · ${others} other screen${others > 1 ? 's' : ''}`;
+  return (
+    <span
+      className={'link-chip ' + (link.connected ? (others ? 'ok' : 'alone') : 'off')}
+      title={
+        link.connected
+          ? 'Play, pause, speed and scrubbing are shared with every linked screen.'
+          : "This screen can't reach the sync server, so it won't follow the others. Reload the page; if it persists, check this device is on the same Wi-Fi."
+      }
+    >
+      <span className="dot" />
+      {label}
     </span>
   );
 }

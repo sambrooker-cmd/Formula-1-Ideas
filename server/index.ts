@@ -124,8 +124,14 @@ app.post('/api/live/stop', async () => {
 // ---- sync relay: lets other devices on the LAN follow the same clock ------
 
 const peers = new Set<WebSocket>();
+/** Tell every window how many are linked, so each can show it. */
+const announcePeers = () => {
+  const text = JSON.stringify({ type: 'peers', count: peers.size });
+  for (const p of peers) if (p.readyState === 1) p.send(text);
+};
 app.get('/api/sync', { websocket: true }, (socket) => {
   peers.add(socket);
+  announcePeers();
   socket.on('message', (raw) => {
     const text = raw.toString();
     let msg: any;
@@ -140,7 +146,10 @@ app.get('/api/sync', { websocket: true }, (socket) => {
     }
     for (const p of peers) if (p !== socket && p.readyState === 1) p.send(text);
   });
-  socket.on('close', () => peers.delete(socket));
+  socket.on('close', () => {
+    peers.delete(socket);
+    announcePeers();
+  });
 });
 
 // ---- production: serve the built frontend ----------------------------------

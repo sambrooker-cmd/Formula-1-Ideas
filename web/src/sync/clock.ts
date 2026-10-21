@@ -127,6 +127,23 @@ export const clock = {
 
 // ---- transports ------------------------------------------------------------
 
+/** Whether this window is linked to the sync server, and how many windows/devices are. */
+export interface LinkStatus {
+  connected: boolean;
+  peers: number;
+}
+let link: LinkStatus = { connected: false, peers: 0 };
+const linkListeners = new Set<() => void>();
+export const getLink = () => link;
+export function subscribeLink(fn: () => void) {
+  linkListeners.add(fn);
+  return () => linkListeners.delete(fn);
+}
+function setLink(next: LinkStatus) {
+  link = next;
+  linkListeners.forEach((l) => l());
+}
+
 const channel = typeof BroadcastChannel !== 'undefined' ? new BroadcastChannel('pitwall-sync') : null;
 let socket: WebSocket | null = null;
 
@@ -158,6 +175,7 @@ function connectSocket() {
   const ws = new WebSocket(url);
   ws.addEventListener('open', () => {
     socket = ws;
+    setLink({ ...link, connected: true });
     // Estimate server clock offset so devices with drifting clocks agree on "now".
     const ping = () => ws.send(JSON.stringify({ type: 'ping', clientTime: Date.now() }));
     ping();
@@ -166,6 +184,10 @@ function connectSocket() {
   });
   ws.addEventListener('message', (e) => {
     const data = JSON.parse(e.data);
+    if (data.type === 'peers') {
+      setLink({ connected: true, peers: data.count });
+      return;
+    }
     if (data.type === 'pong') {
       const rtt = Date.now() - data.clientTime;
       serverOffset = data.serverTime - (data.clientTime + rtt / 2);
@@ -175,6 +197,7 @@ function connectSocket() {
   });
   ws.addEventListener('close', () => {
     socket = null;
+    setLink({ connected: false, peers: 0 });
     setTimeout(connectSocket, 3000);
   });
 }

@@ -765,3 +765,21 @@ a {
     overflow: auto;
   }
 }
+
+.link-chip {
+  display: inline-flex;
+  align-items: center;
+  font-size: 11px;
+  white-space: nowrap;
+  color: var(--muted);
+  border: 1px solid var(--line-2);
+  border-radius: 999px;
+  padding: 3px 9px 3px 7px;
+}
+.link-chip .dot {
+  margin-right: 6px;
+}
+.link-chip.ok .dot { background: var(--green); }
+.link-chip.alone .dot { background: var(--yellow); }
+.link-chip.off { color: var(--red); border-color: #ff3b4e66; }
+.link-chip.off .dot { background: var(--red); }
