@@ -1,7 +1,7 @@
 #!/bin/bash
 # Double-click once: Pit Wall then runs in the background whenever this Mac is on,
 # so you can just open the bookmark (or the iPad icon) without starting anything.
-source "$(dirname "$0")/scripts/mac-common.sh"
+source "$(dirname "$0")/../scripts/mac-common.sh"
 
 case "$APP_DIR" in
   "$HOME/Downloads"* | "$HOME/Desktop"* | "$HOME/Documents"*)
@@ -54,7 +54,7 @@ if is_running; then
   echo "  On this Mac:   http://localhost:$PORT   (bookmark it)"
   [ -n "$(ipad_address)" ] && echo "  On your iPad:  $(ipad_address)   (Share > Add to Home Screen)"
   echo
-  echo "  You can close this window. To turn it off, double-click 'Stop starting automatically'."
+  echo "  You can close this window. To turn it off, double-click 'Stop starting automatically' in the 'More options (Mac)' folder."
   open "http://localhost:$PORT"
 else
   echo "Pit Wall didn't start. The log is in cache/server.log; send it to Claude."

@@ -19,13 +19,19 @@ See [`BRIEF.md`](BRIEF.md) for the project brief and [`docs/PHASE0_FINDINGS.md`]
 ## Easy start on a Mac (no terminal)
 
 1. Install **Node.js** (the LTS version) from nodejs.org.
-2. Download this project as a ZIP from GitHub and unzip it. If you want it to start automatically (step 4), move the folder into your **home folder** first.
-3. Double-click **Start Pit Wall**. The first time it installs what it needs (about a minute), then opens Pit Wall in your browser. Keep that window open while you use it; close it to stop.
-4. Optional: double-click **Start automatically at login** once. Pit Wall then runs in the background whenever your Mac is on, so you just open the bookmark. **Stop starting automatically** turns it off.
+2. Download this project as a ZIP from GitHub (green **Code** button → **Download ZIP**) and unzip it. Moving the folder into your home folder (Finder → Go → Home) keeps things tidy.
+3. Double-click **Pit Wall** in the folder. The first time, it sets itself up (about a minute), then opens Pit Wall in your browser. It keeps running in the background; there's no window to keep open.
+4. Double-click **Pit Wall** again any time: it offers **Open** or **Stop**.
 
-The first time you open one of these files, macOS may say it can't verify the developer. Go to **System Settings → Privacy & Security**, scroll down, click **Open Anyway** next to the file's name, then double-click it again. If macOS asks whether `node` may accept incoming connections, click **Allow**: your iPad needs this to connect.
+You can drag **Pit Wall** to the Dock for one-click access. It remembers where its folder is.
 
-**On your iPad:** open the address the window shows, for example `http://Your-Mac.local:8787/companion`. It uses your Mac's name, so it keeps working when the Wi-Fi gives the Mac a new number. In Safari, tap **Share → Add to Home Screen** and Pit Wall gets its own icon and opens full screen like an app. The **Linked** indicator in the playback bar shows whether a screen is following the others.
+The first time, macOS may say it can't verify the developer. Click **Done**, go to **System Settings → Privacy & Security**, scroll down, click **Open Anyway** next to "Pit Wall", then open it again. If macOS asks whether `node` may accept incoming connections, click **Allow**: your iPad needs this to connect.
+
+**More options (Mac)** has **Start automatically at login** (Pit Wall is then always running whenever your Mac is on), **Stop starting automatically**, and **Start in Terminal** (shows the server's output, useful if something goes wrong). The app writes its log to `~/Library/Application Support/Pit Wall/pitwall.log`.
+
+**On your iPad:** open the address Pit Wall shows when it starts, for example `http://Your-Mac.local:8787/companion`. It uses your Mac's name, so it keeps working when the Wi-Fi gives the Mac a new number. In Safari, tap **Share → Add to Home Screen** and Pit Wall gets its own icon and opens full screen like an app. The **Linked** indicator in the playback bar shows whether a screen is following the others.
+
+**Updating:** download the new ZIP, then move the **cache** folder (your downloaded races) from the old folder into the new one.
 
 ## Setup (developers)
 

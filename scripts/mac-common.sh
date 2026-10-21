@@ -2,6 +2,7 @@
 # Shared by the double-click .command files: find Node, install dependencies, build the app.
 
 cd "$(dirname "$0")" || exit 1
+[ -f package.json ] || cd .. # the .command files live in "More options (Mac)"
 APP_DIR="$(pwd)"
 PORT=8787
 # Finder-launched scripts get a minimal PATH; add the usual Node install locations.

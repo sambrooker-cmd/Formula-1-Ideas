@@ -1,0 +1,99 @@
+#!/bin/bash
+# Pit Wall launcher. Starts the local Pit Wall server in the background (setting it up
+# on first run) and opens it in the browser. If it's already running, offers Open / Stop.
+
+PORT=8787
+URL="http://localhost:$PORT"
+SUPPORT="$HOME/Library/Application Support/Pit Wall"
+LOG="$SUPPORT/pitwall.log"
+PIDFILE="$SUPPORT/server.pid"
+AUTOSTART="$HOME/Library/LaunchAgents/com.pitwall.server.plist"
+mkdir -p "$SUPPORT"
+# Apps launched from Finder get a minimal PATH; add the usual Node install locations.
+export PATH="/usr/local/bin:/opt/homebrew/bin:$HOME/.volta/bin:$HOME/.nvm/versions/node/current/bin:$PATH"
+
+# ---- small helpers ---------------------------------------------------------
+ask() { # ask "message" '"Button1", "Button2"' -> prints the button pressed
+  osascript -e "button returned of (display dialog \"$1\" with title \"Pit Wall\" buttons {$2} default button 1 with icon note)" 2>/dev/null
+}
+notify() { osascript -e "display notification \"$1\" with title \"Pit Wall\"" >/dev/null 2>&1; }
+running() { curl -s -o /dev/null --max-time 2 "$URL/api/sessions"; }
+ipad_address() {
+  local name; name="$(scutil --get LocalHostName 2>/dev/null)"
+  [ -n "$name" ] && echo "http://$name.local:$PORT/companion"
+}
+fail() {
+  echo "$(date): $1" >>"$LOG"
+  [ "$(ask "$1\n\nThe details are in the log file." '"Show log", "OK"')" = "Show log" ] && open -R "$LOG"
+  exit 1
+}
+
+
+# ---- already running? -------------------------------------------------------
+if running; then
+  msg="Pit Wall is running.\n\nOn your iPad: $(ipad_address)"
+  case "$(ask "$msg" '"Open", "Stop", "Cancel"')" in
+    Open) open "$URL" ;;
+    Stop)
+      if [ -f "$AUTOSTART" ]; then
+        ask "Pit Wall is set to start automatically, so it would restart.\n\nTo turn that off, open the 'More options (Mac)' folder and double-click 'Stop starting automatically'." '"OK"' >/dev/null
+      else
+        pid="$(cat "$PIDFILE" 2>/dev/null)"
+        [ -n "$pid" ] && kill "$pid" 2>/dev/null
+        lsof -ti "tcp:$PORT" 2>/dev/null | xargs kill 2>/dev/null
+        notify "Pit Wall has stopped."
+      fi
+      ;;
+  esac
+  exit 0
+fi
+
+# ---- find the Pit Wall folder ----------------------------------------------
+# Normally the app sits inside it. If the app was moved (to Applications or the Dock)
+# or macOS runs it from a temporary copy, use the last known folder or look for it.
+is_project() { [ -f "$1/server/index.ts" ] && grep -q '"name": "pit-wall"' "$1/package.json" 2>/dev/null; }
+PROJECT=""
+for d in "$(cd "$(dirname "$0")/../../.." && pwd)" "$(cat "$SUPPORT/project" 2>/dev/null)"; do
+  if [ -n "$d" ] && is_project "$d"; then PROJECT="$d"; break; fi
+done
+if [ -z "$PROJECT" ]; then
+  while IFS= read -r f; do
+    d="$(dirname "$(dirname "$f")")"
+    if is_project "$d"; then PROJECT="$d"; break; fi
+  done < <(find "$HOME" -maxdepth 4 \( -path "$HOME/Library" -o -path "$HOME/.Trash" -o -name node_modules \) -prune -o -path '*/server/index.ts' -print 2>/dev/null)
+fi
+[ -z "$PROJECT" ] && fail "Couldn't find the Pit Wall folder. Keep the Pit Wall app inside the folder you downloaded from GitHub (or in your home folder), then try again."
+echo "$PROJECT" >"$SUPPORT/project"
+cd "$PROJECT" || fail "Couldn't open the Pit Wall folder at $PROJECT."
+
+# ---- Node.js -----------------------------------------------------------------
+if ! command -v node >/dev/null 2>&1; then
+  [ "$(ask "Pit Wall needs Node.js, which is free.\n\nInstall the LTS version from nodejs.org, then open Pit Wall again." '"Get Node.js", "Cancel"')" = "Get Node.js" ] && open "https://nodejs.org/"
+  exit 1
+fi
+NODE="$(command -v node)"
+IFS=. read -r major minor _ <<<"$(node -v | tr -d v)"
+if [ "$major" -lt 22 ] || { [ "$major" -eq 22 ] && [ "$minor" -lt 13 ]; }; then
+  [ "$(ask "Your Node.js is $(node -v). Pit Wall needs version 22.13 or newer.\n\nInstall the LTS version from nodejs.org, then open Pit Wall again." '"Get Node.js", "Cancel"')" = "Get Node.js" ] && open "https://nodejs.org/"
+  exit 1
+fi
+
+# ---- set up (first run / after an update) and start ----------------------------
+{
+  echo
+  echo "==== $(date): starting from $PROJECT with node $(node -v)"
+} >>"$LOG"
+if [ ! -d node_modules ] || [ package.json -nt node_modules ] || [ package-lock.json -nt node_modules ]; then
+  notify "Setting up Pit Wall. This first start takes about a minute."
+  npm install --no-fund --no-audit --loglevel=error >>"$LOG" 2>&1 || fail "Pit Wall couldn't finish setting up."
+  touch node_modules
+fi
+npx vite build --logLevel error >>"$LOG" 2>&1 || fail "Pit Wall couldn't prepare the app."
+
+nohup "$NODE" node_modules/tsx/dist/cli.mjs server/index.ts --production >>"$LOG" 2>&1 &
+echo $! >"$PIDFILE"
+for _ in $(seq 1 60); do running && break; sleep 0.5; done
+running || fail "Pit Wall didn't start."
+
+open "$URL"
+notify "Pit Wall is running. On your iPad: $(ipad_address)"

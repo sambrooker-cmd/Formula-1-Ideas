@@ -1,6 +1,6 @@
 #!/bin/bash
 # Double-click to start Pit Wall. Keep this window open while you use it; close it to stop.
-source "$(dirname "$0")/scripts/mac-common.sh"
+source "$(dirname "$0")/../scripts/mac-common.sh"
 
 if is_running; then
   echo "Pit Wall is already running. Opening it…"
