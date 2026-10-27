@@ -1,0 +1,10 @@
+{
+  "rules": {
+    "rooms": {
+      "$uid": {
+        ".read": "auth != null && auth.uid === $uid && auth.token.email_verified === true && false",
+        ".write": "auth != null && auth.uid === $uid && auth.token.email_verified === true && false"
+      }
+    }
+  }
+}

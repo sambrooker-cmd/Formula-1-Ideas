@@ -1376,3 +1376,20 @@ a {
   font-size: 13px;
   cursor: pointer;
 }
+
+/* ---------- sign-in (hosted) ---------- */
+.signin {
+  min-height: 100%;
+  display: grid;
+  place-items: center;
+  padding: 24px max(16px, env(safe-area-inset-left, 0px));
+}
+.signin-card {
+  width: min(440px, 100%);
+  display: grid;
+  gap: 14px;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: 24px;
+}

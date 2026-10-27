@@ -3,6 +3,8 @@ import { clock, getLink, now, subscribeLink, wallNow } from '../sync/clock';
 import { useNow, useSynced } from '../hooks';
 import type { SessionData, TrackStatusKind } from '../data/session';
 import { AlertToggles } from './Alerts';
+import { HOSTED } from '../env';
+import { firebaseEnabled } from '../firebase';
 import { formatClock, leaderLap, trackStatusAt } from '../data/state';
 
 const SPEEDS = [1, 2, 4, 8, 16];
@@ -247,6 +249,7 @@ function TvDelay({ data, compact }: { data: SessionData; compact: boolean }) {
 /** Shows whether this screen is linked to the others (other windows and devices on the Wi-Fi). */
 function LinkChip() {
   const link = useSyncExternalStore(subscribeLink, getLink);
+  if (HOSTED && !firebaseEnabled) return null; // nothing to link to
   const others = Math.max(0, link.peers - 1);
   const label = !link.connected ? 'Not linked' : others === 0 ? 'Linked · no other screens' : `Linked · ${others} other screen${others > 1 ? 's' : ''}`;
   return (

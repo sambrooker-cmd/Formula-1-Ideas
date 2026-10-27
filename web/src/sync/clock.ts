@@ -1,3 +1,4 @@
+import { HOSTED } from '../env';
 // One shared playback clock for every window (and, via the server relay, every
 // device on the LAN). Windows only exchange *changes* (play, pause, seek, speed,
 // session, selected drivers). Each window then computes the current time itself:
@@ -82,7 +83,10 @@ export function now(s: SyncedState = state) {
 
 function apply(next: SyncedState, broadcast: boolean) {
   state = next;
-  if (broadcast) send({ type: 'state', state, src: SRC });
+  if (broadcast) {
+    send({ type: 'state', state, src: SRC });
+    remote?.send(state);
+  }
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify({ ...state, playing: false, anchorT: now() }));
   } catch {
@@ -144,6 +148,32 @@ function setLink(next: LinkStatus) {
   linkListeners.forEach((l) => l());
 }
 
+// ---- remote sync (hosted build: Firebase) ---------------------------------------
+
+/** A transport that reaches the user's other devices, e.g. Firebase Realtime Database. */
+export interface RemoteSync {
+  send: (state: SyncedState) => void;
+}
+let remote: RemoteSync | null = null;
+
+export function attachRemote(r: RemoteSync | null) {
+  remote = r;
+}
+
+/** A state from another device: adopt it if it's newer than ours. */
+export function receiveRemote(next: SyncedState) {
+  if (next.rev > state.rev) apply(next, false);
+}
+
+/** Corrects this device's clock to the sync server's, so devices agree on "now". */
+export function setServerOffset(ms: number) {
+  serverOffset = ms;
+}
+
+export function setLinkStatus(next: LinkStatus) {
+  setLink(next);
+}
+
 const channel = typeof BroadcastChannel !== 'undefined' ? new BroadcastChannel('pitwall-sync') : null;
 let socket: WebSocket | null = null;
 
@@ -202,7 +232,8 @@ function connectSocket() {
   });
 }
 
-connectSocket();
+// The hosted build has no local server to relay through (cross-device sync uses Firebase there).
+if (!HOSTED) connectSocket();
 send({ type: 'hello', src: SRC });
 
 // Handy for debugging from the browser console: __pitwall.getState(), __pitwall.now()

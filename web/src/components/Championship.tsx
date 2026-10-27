@@ -3,6 +3,7 @@ import type { SessionData } from '../data/session';
 import { overallBestAt, tower } from '../data/state';
 import { useNow } from '../hooks';
 import { Panel } from './Panel';
+import { standingsBefore } from '../api';
 
 const RACE_POINTS = [25, 18, 15, 12, 10, 8, 6, 4, 2, 1];
 const SPRINT_POINTS = [8, 7, 6, 5, 4, 3, 2, 1];
@@ -18,11 +19,7 @@ const cache = new Map<string, Promise<Before>>();
 function loadBefore(year: number, date: string, kind: string) {
   const key = `${year}|${date}|${kind}`;
   if (!cache.has(key)) {
-    const p = fetch(`/api/standings-before?year=${year}&date=${date}&kind=${kind}`).then(async (r) => {
-      const body = await r.json();
-      if (!r.ok) throw new Error(body.error ?? 'Could not load standings');
-      return body as Before;
-    });
+    const p = standingsBefore(year, date, kind === 'sprint' ? 'sprint' : 'race') as Promise<Before>;
     p.catch(() => cache.delete(key));
     cache.set(key, p);
   }

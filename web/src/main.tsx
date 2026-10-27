@@ -18,6 +18,7 @@ import { Championship } from './components/Championship';
 import { AlertsHost } from './components/Alerts';
 import { DriverDash } from './components/DriverDash';
 import { TvMode } from './components/TvMode';
+import { SignInGate } from './components/SignInGate';
 
 type PanelComponent = ComponentType<{ data: SessionData; area?: string }>;
 
@@ -223,6 +224,8 @@ function App() {
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    <App />
+    <SignInGate>
+      <App />
+    </SignInGate>
   </StrictMode>,
 );

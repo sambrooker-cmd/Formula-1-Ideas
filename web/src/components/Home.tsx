@@ -3,6 +3,9 @@ import { clock } from '../sync/clock';
 import { useSynced } from '../hooks';
 import { captureLayout, openLayout, PANEL_ROUTES, PRESETS, savedLayouts, saveLayouts, type Layout } from '../layouts';
 import { Footer } from './Footer';
+import { HOSTED } from '../env';
+import { listSessions, season as loadSeason } from '../api';
+import { AccountLine } from './SignInGate';
 
 interface Cached {
   session_key: number;
@@ -33,7 +36,7 @@ export function Home() {
   const { sessionKey } = useSynced();
   const [cached, setCached] = useState<Cached[]>([]);
   const [jobs, setJobs] = useState<Job[]>([]);
-  const refresh = () => getJson<Cached[]>('/api/sessions').then(setCached).catch(() => setCached([]));
+  const refresh = () => listSessions().then(setCached).catch(() => setCached([]));
 
   useEffect(() => {
     refresh();
@@ -43,6 +46,7 @@ export function Home() {
   useEffect(() => {
     let stop = false;
     const poll = async () => {
+      if (HOSTED) return; // no download jobs: races are published by the site itself
       const list = await getJson<Job[]>('/api/ingest').catch(() => []);
       if (stop) return;
       setJobs(list);
@@ -109,12 +113,13 @@ export function Home() {
         </div>
       </section>
 
-      <LiveCard cached={cached} />
+      {!HOSTED && <LiveCard cached={cached} />}
 
-      <IngestCard jobs={jobs} onStarted={(j) => setJobs((prev) => [...prev, j])} />
+      {!HOSTED && <IngestCard jobs={jobs} onStarted={(j) => setJobs((prev) => [...prev, j])} />}
 
       <LayoutsCard hasSession={sessionKey != null} />
 
+      <AccountLine />
       <Footer />
     </div>
   );
@@ -171,7 +176,7 @@ function SeasonCard({ jobs, onOpen, onDownload }: { jobs: Job[]; onOpen: (key: n
   useEffect(() => {
     setSeason(null);
     setError('');
-    getJson<Season>(`/api/season?year=${year}`).then(setSeason, (e) => setError(String(e.message ?? e)));
+    loadSeason(year).then((x) => setSeason(x as Season), (e) => setError(String(e.message ?? e)));
   }, [year, jobs.filter((j) => j.state === 'done').length]);
 
   useEffect(() => {
@@ -234,6 +239,10 @@ function SeasonCard({ jobs, onOpen, onDownload }: { jobs: Job[]; onOpen: (key: n
                     <span className="cal-action">
                       {r.cached && r.sessionKey ? (
                         <button className="btn primary small" onClick={() => onOpen(r.sessionKey!)}>Replay</button>
+                      ) : past && r.sessionKey && HOSTED ? (
+                        <span className="dim" style={{ fontSize: 11 }} title="Races are added to the site automatically a few hours after they finish">
+                          Not added yet
+                        </span>
                       ) : past && r.sessionKey ? (
                         downloading.has(r.sessionKey) ? (
                           <span className="dim" style={{ fontSize: 11 }}>Downloading…</span>
@@ -298,7 +307,7 @@ function SeasonCard({ jobs, onOpen, onDownload }: { jobs: Job[]; onOpen: (key: n
               </table>
             </div>
           </div>
-          <AutoDownloadToggle />
+          {!HOSTED && <AutoDownloadToggle />}
           <div className="dim" style={{ fontSize: 11, marginTop: 10 }}>
             Calendar, results and standings from Jolpica (free). Times shown in your local time zone.
           </div>
@@ -601,7 +610,9 @@ function LayoutsCard({ hasSession }: { hasSession: boolean }) {
       </div>
       {note && <div className="muted" style={{ marginTop: 10, fontSize: 12 }}>{note}</div>}
       <div className="dim" style={{ marginTop: 10, fontSize: 12 }}>
-        Other devices on your Wi-Fi (TV, tablet, laptop) can join too: open <code>http://&lt;this computer's IP&gt;:5173/map</code> and they follow the same clock.
+        {HOSTED
+          ? 'Signed in on another device? It follows the same clock, wherever it is.'
+          : <>Other devices on your Wi-Fi (TV, tablet, laptop) can join too: open <code>http://&lt;this computer's IP&gt;:5173/map</code> and they follow the same clock.</>}
       </div>
     </section>
   );

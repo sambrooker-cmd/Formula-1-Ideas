@@ -5,3 +5,5 @@ cache/
 .env.*
 *.log
 !.env.example
+site-data/
+.firebase/

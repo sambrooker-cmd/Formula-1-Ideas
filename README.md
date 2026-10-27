@@ -121,6 +121,45 @@ On the home page, under **Live**, choose a cached race and a starting lap and cl
 
 After a real session ends, download it normally (`npm run ingest` or the home page) to get the complete, cleaned-up replay with the circuit outline and final classification.
 
+## Hosting on Firebase (any browser, anywhere)
+
+The same app can run as a private website on Firebase's free plan. There's no server: a GitHub job adds each session (races, qualifying, sprints) about 2 hours after it finishes and publishes it to the site, so every device gets it instantly. Sign-in is with Google and only the accounts you list can get in, and your devices stay in sync through Firebase.
+
+Compared with running it on your Mac:
+- **Everything except live mode works.** Live needs the Mac version for now.
+- **The race files are public files on the site.** The app itself needs sign-in, but anyone with a file's exact address could download it. The OpenF1 data licence allows non-commercial sharing.
+
+### One-time setup
+
+**1. Firebase project** at console.firebase.google.com:
+- **Create the project:** Add project → name it (e.g. `pit-wall`) → Analytics off. Keep the free **Spark** plan.
+- **Sign-in:** Build → Authentication → Get started → **Google** → Enable.
+- **Database:** Build → Realtime Database → Create database → **Belgium (europe-west1)** → *Start in locked mode*.
+- **Web app:** ⚙️ Project settings → General → Your apps → **</>** → name it "Pit Wall" → register. Copy the `firebaseConfig` values.
+
+**2. Put the config in the app.** Fill in `web/src/hosting.config.json`:
+```json
+{
+  "firebase": { "apiKey": "…", "authDomain": "…", "databaseURL": "…", "projectId": "…", "storageBucket": "…", "messagingSenderId": "…", "appId": "…" },
+  "allowedEmails": ["you@gmail.com"]
+}
+```
+The config identifies the project and isn't secret. Only the listed Google accounts can sign in.
+
+**3. A deploy key for GitHub.** Go to console.cloud.google.com → pick the project:
+- **Create the service account:** IAM & Admin → **Service accounts** → **Create service account** → name `github-deploy` → role **Firebase Admin** → Done.
+- **Create its key:** open it → **Keys** → Add key → Create new key → **JSON**. A file downloads. Treat it like a password.
+
+**4. Connect GitHub** (the repository's Settings → Secrets and variables → Actions):
+- **Secrets** → New repository secret: `FIREBASE_SERVICE_ACCOUNT`, with the whole contents of that JSON file. Then delete the file.
+- **Variables** → New repository variable: `FIREBASE_PROJECT_ID`, with your project ID (e.g. `pit-wall-1a2b3`).
+
+**5. First publish.** On GitHub, go to Actions → **Publish Pit Wall** → Run workflow. To fill the site with this season so far, type the year (e.g. `2026`) in the season box; that takes up to an hour. After that it runs by itself every 4 hours and on every change to `main`.
+
+Your site is then at `https://<project-id>.web.app`. On iPhone/iPad, use Share → Add to Home Screen.
+
+To publish on your own computer instead of GitHub: run `npm run publish:data`, then `npm run build:hosted`, then `npx firebase-tools deploy`.
+
 ## How it works
 
 ```

@@ -1,5 +1,6 @@
 // Loads a replay pack and indexes it for fast "state at time T" lookups.
 import type { PackDriver, PackMeta, SamplesHeader } from '../../../shared/pack';
+import { fetchBytes, packUrls } from '../api';
 
 /** Typed arrays for replays; plain (growable) arrays in live mode. */
 export type Num = { readonly length: number; [i: number]: number };
@@ -119,10 +120,14 @@ function growable(s: DriverSamples): DriverSamples {
 }
 
 async function load(key: number, onProgress?: (loaded: number, total: number) => void): Promise<SessionData> {
-  const metaRes = await fetch(`/api/sessions/${key}/meta`);
-  if (!metaRes.ok) throw new Error(`Session ${key} is not cached yet. Ingest it from the home page first.`);
-  const meta = (await metaRes.json()) as PackMeta;
-  const buf = await fetchWithProgress(`/api/sessions/${key}/samples`, onProgress);
+  const urls = packUrls(key);
+  let meta: PackMeta;
+  try {
+    meta = JSON.parse(new TextDecoder().decode(await fetchBytes(urls.meta))) as PackMeta;
+  } catch {
+    throw new Error(`Session ${key} isn't available yet.`);
+  }
+  const buf = await fetchBytes(urls.samples, (n) => onProgress?.(n, 0));
   return index(meta, buf);
 }
 
