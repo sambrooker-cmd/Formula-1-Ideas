@@ -146,3 +146,15 @@ export async function circuitHistory(circuitId: string): Promise<CircuitHistory>
     };
   });
 }
+
+/** Corner positions (timing x/y) for a replay's circuit, via its OpenF1 meeting and MultiViewer. */
+export async function cornersForSession(meta: { t0: number; session: { year: number } }) {
+  const date = new Date(meta.t0 + 2 * 3600e3).toISOString().slice(0, 10);
+  const m = await meetingFor(meta.session.year, date);
+  if (!m) return null;
+  const l = await layout(m.circuit_key, meta.session.year);
+  if (!l) return null;
+  return l.corners
+    .map((c) => ({ number: `${c.number}${c.letter ?? ''}`, x: c.trackPosition.x, y: c.trackPosition.y, length: c.length }))
+    .sort((a, b) => a.length - b.length);
+}

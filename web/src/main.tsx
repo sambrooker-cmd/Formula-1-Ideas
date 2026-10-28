@@ -23,6 +23,8 @@ import { SignInGate } from './components/SignInGate';
 import { RaceReport } from './components/RaceReport';
 import { LongRuns } from './components/LongRuns';
 import { Cockpit } from './components/Cockpit';
+import { GhostLap } from './components/GhostLap';
+import { Corners } from './components/Corners';
 
 // three.js is big: only load it when the 3D page is opened.
 const Replay3D = lazy(() => import('./three/Replay3D'));
@@ -46,6 +48,8 @@ const SINGLE: Record<string, PanelComponent> = {
   '/tyre-wear': TyreWear,
   '/championship': Championship,
   '/long-runs': LongRuns,
+  '/ghost': GhostLap,
+  '/corners': Corners,
 };
 
 /** Pit wall bottom-right: tyre strategy or the live championship. */
@@ -79,6 +83,21 @@ function AnalysisTabs({ data }: { data: SessionData }) {
   );
 }
 
+/** The analysis page: deeper tools that want a whole screen. */
+function AnalysisPage({ data }: { data: SessionData }) {
+  return (
+    <div className="analysis-page">
+      <Tabbed
+        storageKey="pitwall.tab.analysis-page"
+        tabs={[
+          { id: 'ghost', label: 'Ghost lap', render: (lead) => <GhostLap data={data} lead={lead} /> },
+          { id: 'corners', label: 'Corners', render: (lead) => <Corners data={data} lead={lead} /> },
+        ]}
+      />
+    </div>
+  );
+}
+
 /** Race control messages, or the key moments list. */
 function ControlTabs({ data, area = 'rc' }: { data: SessionData; area?: string }) {
   return (
@@ -107,6 +126,11 @@ function TopBar({ data }: { data?: SessionData }) {
         </span>
       )}
       <span style={{ flex: 1 }} />
+      {data && location.pathname !== '/analysis' && (
+        <a className="icon-btn" href="/analysis" target="_blank" rel="noopener" style={{ textDecoration: 'none' }} title="Ghost laps, corners, tyre wear, pace, strategy simulator and battles">
+          📈 Analysis
+        </a>
+      )}
       {data && location.pathname !== '/3d' && (
         <a className="icon-btn" href="/3d" target="_blank" rel="noopener" style={{ textDecoration: 'none' }} title="The replay in 3D, in a new window">
           🧊 3D
@@ -256,6 +280,7 @@ function App() {
         </WithSession>
       </div>
     );
+  if (path === '/analysis') return <FullPage>{(data) => <AnalysisPage data={data} />}</FullPage>;
   if (path === '/3d')
     return (
       <FullPage>

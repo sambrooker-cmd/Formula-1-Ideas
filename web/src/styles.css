@@ -2269,3 +2269,106 @@ a {
 .radar-bar input {
   flex: 1;
 }
+
+/* ---------- lap picker, ghost lap, corners ---------- */
+.lap-pick {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+.lap-pick-tag {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  font-size: 10px;
+  font-weight: 800;
+  color: #000;
+}
+.lap-pick-tag.ghost {
+  background: transparent;
+  border: 2px solid;
+  color: var(--text);
+}
+.ghost {
+  display: grid;
+  grid-template-columns: minmax(0, 1.6fr) minmax(220px, 1fr);
+  gap: 10px;
+  padding: 8px 10px;
+}
+@media (max-width: 800px) {
+  .ghost {
+    grid-template-columns: 1fr;
+  }
+}
+.ghost-map {
+  height: 340px;
+}
+.ghost-gap {
+  font-size: 40px;
+  font-weight: 800;
+}
+.ghost-rows {
+  margin: 10px 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 13px;
+}
+.ghost-rows div {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.ghost-rows b {
+  margin-left: auto;
+  font-size: 18px;
+}
+.ghost-player {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 10px;
+}
+.ghost-player input {
+  flex: 1;
+}
+.corner-table th {
+  text-align: right;
+}
+.corner-table th:first-child,
+.corner-table td:first-child {
+  text-align: left;
+}
+.corner-table td {
+  text-align: right;
+}
+.corner-table td.corner-field {
+  text-align: left;
+  white-space: normal;
+}
+.corner-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin: 0 10px 2px 0;
+  font-weight: 600;
+}
+.corner-chip i {
+  width: 3px;
+  height: 11px;
+  border-radius: 2px;
+}
+.lr-table .dim th {
+  font-weight: 500;
+}
+.analysis-page {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+}
+.analysis-page > .panel {
+  flex: 1;
+}
