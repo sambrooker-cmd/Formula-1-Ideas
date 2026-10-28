@@ -2372,3 +2372,83 @@ a {
 .analysis-page > .panel {
   flex: 1;
 }
+
+/* ---------- battles, simulator, pace ---------- */
+.moment.battle-row {
+  grid-template-columns: 34px minmax(0, 1fr) auto;
+}
+.battle-pos {
+  font-weight: 800;
+  text-align: center;
+  color: var(--muted);
+}
+.moment.battle-row.live {
+  background: #ff4d2e14;
+}
+.battle-tag.live {
+  color: var(--accent);
+  border-color: var(--accent);
+}
+.moment-text .good {
+  color: var(--green);
+}
+.sim-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.2fr) minmax(220px, 1fr);
+  gap: 14px;
+  padding: 8px 10px;
+}
+@media (max-width: 800px) {
+  .sim-grid,
+  .pace-grid {
+    grid-template-columns: 1fr;
+  }
+}
+.sim-num {
+  width: 56px;
+  background: var(--panel-2);
+  border: 1px solid var(--line-2);
+  color: var(--text);
+  border-radius: 5px;
+  padding: 2px 6px;
+  font: inherit;
+}
+.sim-pos {
+  font-size: 18px;
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.sim-pos b {
+  font-size: 34px;
+}
+.sim-pos .good {
+  color: var(--green);
+}
+.sim-pos .bad {
+  color: var(--red);
+}
+.pace-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.3fr) minmax(260px, 1fr);
+  gap: 14px;
+  padding: 8px 10px;
+}
+.deg-cards {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+.deg-card {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  background: var(--panel-2);
+  border-radius: 8px;
+  padding: 6px 10px;
+}
+.deg-card .strong {
+  font-weight: 700;
+}

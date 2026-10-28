@@ -25,6 +25,9 @@ import { LongRuns } from './components/LongRuns';
 import { Cockpit } from './components/Cockpit';
 import { GhostLap } from './components/GhostLap';
 import { Corners } from './components/Corners';
+import { CleanAirPace, TyreDeg } from './components/RacePace';
+import { StrategySim } from './components/StrategySim';
+import { Battles } from './components/Battles';
 
 // three.js is big: only load it when the 3D page is opened.
 const Replay3D = lazy(() => import('./three/Replay3D'));
@@ -50,6 +53,10 @@ const SINGLE: Record<string, PanelComponent> = {
   '/long-runs': LongRuns,
   '/ghost': GhostLap,
   '/corners': Corners,
+  '/tyre-deg': TyreDeg,
+  '/clean-air': CleanAirPace,
+  '/strategy-sim': StrategySim,
+  '/battles': Battles,
 };
 
 /** Pit wall bottom-right: tyre strategy or the live championship. */
@@ -92,6 +99,10 @@ function AnalysisPage({ data }: { data: SessionData }) {
         tabs={[
           { id: 'ghost', label: 'Ghost lap', render: (lead) => <GhostLap data={data} lead={lead} /> },
           { id: 'corners', label: 'Corners', render: (lead) => <Corners data={data} lead={lead} /> },
+          { id: 'deg', label: 'Tyre deg', render: (lead) => <TyreDeg data={data} lead={lead} /> },
+          { id: 'clean', label: 'Clean-air pace', render: (lead) => <CleanAirPace data={data} lead={lead} /> },
+          { id: 'sim', label: 'Strategy sim', render: (lead) => <StrategySim data={data} lead={lead} /> },
+          { id: 'battles', label: 'Battles', render: (lead) => <Battles data={data} lead={lead} /> },
         ]}
       />
     </div>
@@ -106,6 +117,7 @@ function ControlTabs({ data, area = 'rc' }: { data: SessionData; area?: string }
       tabs={[
         { id: 'messages', label: 'Messages', render: (lead) => <RaceControl data={data} area={area} lead={lead} /> },
         { id: 'moments', label: 'Moments', render: (lead) => <KeyMoments data={data} area={area} lead={lead} /> },
+        { id: 'battles', label: 'Battles', render: (lead) => <Battles data={data} area={area} lead={lead} /> },
       ]}
     />
   );

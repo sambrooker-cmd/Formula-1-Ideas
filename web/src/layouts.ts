@@ -22,6 +22,10 @@ export const PANEL_ROUTES = [
   { path: '/analysis', title: 'Analysis' },
   { path: '/ghost', title: 'Ghost lap' },
   { path: '/corners', title: 'Corners' },
+  { path: '/tyre-deg', title: 'Tyre degradation' },
+  { path: '/clean-air', title: 'Clean-air pace' },
+  { path: '/strategy-sim', title: 'Strategy simulator' },
+  { path: '/battles', title: 'Battles' },
   { path: '/tv', title: 'TV mode' },
   { path: '/report', title: 'Race report' },
 ] as const;
