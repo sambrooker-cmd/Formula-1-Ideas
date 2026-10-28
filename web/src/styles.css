@@ -2706,3 +2706,41 @@ a {
     display: none;
   }
 }
+
+/* ---------- starts ---------- */
+.start-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.start-row {
+  display: grid;
+  grid-template-columns: 34px 3px 36px 1fr 30px 34px;
+  gap: 6px;
+  align-items: center;
+  font-size: 12px;
+}
+.start-bar {
+  position: relative;
+  height: 10px;
+  background: linear-gradient(90deg, transparent calc(50% - 0.5px), var(--line-2) calc(50% - 0.5px), var(--line-2) calc(50% + 0.5px), transparent calc(50% + 0.5px));
+}
+.start-bar i {
+  position: absolute;
+  top: 1px;
+  height: 8px;
+  border-radius: 2px;
+}
+.start-bar i.gain {
+  background: var(--green);
+}
+.start-bar i.loss {
+  background: var(--red);
+}
+.start-row .good,
+.lr-table .good {
+  color: var(--green);
+}
+.start-row .bad {
+  color: var(--red);
+}

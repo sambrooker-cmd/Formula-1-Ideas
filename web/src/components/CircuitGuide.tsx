@@ -9,6 +9,7 @@ import { useElementSize } from '../hooks';
 import { DocShell, go, links, Loading, ordinal, param, teamColour, thisYear, Tile, useHistory, YearSelect } from './Explore';
 import { LineChart } from './LineChart';
 import { RaceWeather } from './Weather';
+import { circuitStarts, type PastStart } from '../data/starts';
 
 export function CircuitGuidePage() {
   const year = Number(param('year')) || thisYear();
@@ -153,6 +154,7 @@ function CircuitBody({ h }: { h: SeasonHistory }) {
       )}
 
       {hist && hist.winners.length > 0 && <History hist={hist} year={h.year} />}
+      <StartsHere circuitId={race.circuitId} />
     </>
   );
 }
@@ -273,5 +275,24 @@ function CircuitMap({ map }: { map: Layout }) {
         </svg>
       )}
     </div>
+  );
+}
+
+function StartsHere({ circuitId }: { circuitId: string }) {
+  const [past, setPast] = useState<PastStart[] | null>(null);
+  useEffect(() => {
+    setPast(null);
+    circuitStarts(circuitId).then(setPast, () => setPast([]));
+  }, [circuitId]);
+  if (!past?.length) return null;
+  return (
+    <section className="doc-section">
+      <h2>Starts here</h2>
+      <p>
+        In the last {past.length} races here, pole led after lap 1 {past.filter((p) => p.poleKept).length} times. Cars moved{' '}
+        {(past.reduce((s, p) => s + p.avgChange, 0) / past.length).toFixed(1)} places each on lap 1 on average
+        {past.some((p) => p.lap1Out.length) ? `, and ${past.reduce((s, p) => s + p.lap1Out.length, 0)} cars went out on the first lap` : ''}.
+      </p>
+    </section>
   );
 }
