@@ -33,7 +33,11 @@ export function Corners({ data, area, lead }: { data: SessionData; area?: string
       if (tr) rows.push({ n, stats: cornerStats(data, tr, corners) });
     }
     return corners.map((c, i) => {
-      const ranked = rows.filter((r) => r.stats[i]).sort((x, y) => y.stats[i]!.minSpeed - x.stats[i]!.minSpeed || y.stats[i]!.exitSpeed - x.stats[i]!.exitSpeed);
+      // A reading far from the field's typical speed means that lap's position and speed data are out
+      // of step there (it happens on some laps); leave it out rather than show nonsense.
+      const speeds = rows.map((r) => r.stats[i]?.minSpeed).filter((v): v is number => v != null).sort((x, y) => x - y);
+      const median = speeds[Math.floor(speeds.length / 2)] ?? 0;
+      const ranked = rows.filter((r) => r.stats[i] && Math.abs(r.stats[i]!.minSpeed - median) < Math.max(25, median * 0.2)).sort((x, y) => y.stats[i]!.minSpeed - x.stats[i]!.minSpeed || y.stats[i]!.exitSpeed - x.stats[i]!.exitSpeed);
       return { corner: c.number, ranked: ranked.map((r) => ({ n: r.n, s: r.stats[i]! })) };
     });
   }, [view, corners, data]);
