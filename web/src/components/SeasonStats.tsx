@@ -1,4 +1,6 @@
 // Season stats: points progression, the full driver and team tables, team-mate battles and winners.
+import { TitleMaths } from './TitleMaths';
+import { FormGuide } from './FormGuide';
 import { useMemo, useState } from 'react';
 import {
   completedRounds,
@@ -106,6 +108,10 @@ function SeasonBody({ h }: { h: SeasonHistory }) {
         {bestClimb && <Tile label="Biggest climb" value={`${code(bestClimb.r[1])} +${bestClimb.gain}`} sub={`P${bestClimb.r[3]} → P${bestClimb.r[4]}, ${raceName(bestClimb.r[0])}`} />}
         <Tile label="Most poles" value={code([...drivers].sort((a, b) => b.poles - a.poles)[0].id)} sub={`${[...drivers].sort((a, b) => b.poles - a.poles)[0].poles} poles`} />
       </div>
+
+      <TitleMaths h={h} />
+
+      <FormGuide h={h} />
 
       <section className="doc-section">
         <div className="doc-section-head">

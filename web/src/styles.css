@@ -2836,3 +2836,10 @@ a {
 .tabs { max-width: 100%; overflow-x: auto; scrollbar-width: none; }
 .tabs::-webkit-scrollbar { display: none; }
 .tabs button { flex: none; }
+.title-block { margin-bottom: 14px; }
+.title-block h3 { margin: 6px 0 4px; font-size: 13px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); }
+.title-block p { margin: 4px 0; }
+.title-table td { padding: 4px 10px 4px 0; }
+.form-bars { display: inline-flex; align-items: flex-end; gap: 3px; height: 22px; vertical-align: middle; }
+.form-bars i { width: 7px; border-radius: 2px; display: inline-block; }
+.form-table td { vertical-align: middle; }
