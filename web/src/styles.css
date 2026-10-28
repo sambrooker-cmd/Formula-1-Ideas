@@ -2551,3 +2551,47 @@ a {
   padding: 0 0.6em;
   flex: none;
 }
+
+/* ---------- career head to head ---------- */
+.h2h-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+}
+.h2h-search {
+  background: var(--panel-2);
+  border: 1px solid var(--line-2);
+  color: var(--text);
+  border-radius: 6px;
+  padding: 5px 9px;
+  font: inherit;
+  min-width: 220px;
+}
+.h2h-table-wrap {
+  max-width: 760px;
+}
+.h2h-career td {
+  font-size: 15px;
+}
+.h2h-career td.l {
+  text-align: left;
+}
+.h2h-career td:last-child,
+.h2h-career th:last-child {
+  text-align: right;
+}
+.h2h-label-cell {
+  text-align: center !important;
+  color: var(--dim);
+  font-size: 12px !important;
+}
+.doc-table td.wrap {
+  white-space: normal;
+  font-size: 12px;
+}
+@media (max-width: 1000px) {
+  .doc-nav {
+    overflow-x: auto;
+    max-width: 55vw;
+  }
+}

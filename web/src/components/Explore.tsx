@@ -45,7 +45,7 @@ export function useHistory(year: number) {
   return { h, error };
 }
 
-export function DocShell({ children, active }: { children: ReactNode; active?: 'season' | 'driver' | 'circuit' }) {
+export function DocShell({ children, active }: { children: ReactNode; active?: 'season' | 'driver' | 'circuit' | 'h2h' | 'predictions' | 'history' }) {
   const year = Number(param('year')) || thisYear();
   return (
     <div className="page">
@@ -62,6 +62,15 @@ export function DocShell({ children, active }: { children: ReactNode; active?: '
           </a>
           <a className={active === 'circuit' ? 'on' : ''} href={`/circuit?year=${year}`}>
             Circuits
+          </a>
+          <a className={active === 'h2h' ? 'on' : ''} href="/head-to-head">
+            Head to head
+          </a>
+          <a className={active === 'predictions' ? 'on' : ''} href="/predictions">
+            Predictions
+          </a>
+          <a className={active === 'history' ? 'on' : ''} href="/on-this-day">
+            On this day
           </a>
         </nav>
         <span style={{ flex: 1 }} />

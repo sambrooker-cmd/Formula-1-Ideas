@@ -27,7 +27,21 @@ export function makeJolpica(headers: Record<string, string> = {}): Jolpica {
     const wait = lastRequest + 300 - Date.now();
     if (wait > 0) await new Promise((r) => setTimeout(r, wait));
     lastRequest = Date.now();
-    const res = await fetch(JOLPICA_BASE + path, { headers });
+    // Jolpica throttles bursts (429) and sometimes drops connections: back off and retry.
+    let res: Response | null = null;
+    for (let attempt = 0; attempt < 4; attempt++) {
+      try {
+        res = await fetch(JOLPICA_BASE + path, { headers });
+        if (res.status !== 429 && res.status < 500) break;
+      } catch {
+        res = null;
+      }
+      await new Promise((r) => setTimeout(r, [2000, 5000, 10000, 0][attempt]));
+    }
+    if (!res) {
+      if (hit) return hit.data;
+      throw new Error(`Couldn't reach Jolpica for ${path}`);
+    }
     if (!res.ok) {
       if (hit) return hit.data; // stale beats nothing
       throw new Error(`Jolpica ${res.status} for ${path}`);

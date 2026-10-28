@@ -35,6 +35,7 @@ const Replay3D = lazy(() => import('./three/Replay3D'));
 import { SeasonStatsPage } from './components/SeasonStats';
 import { DriverSeasonPage } from './components/DriverSeason';
 import { CircuitGuidePage } from './components/CircuitGuide';
+import { CareerH2HPage } from './components/CareerH2H';
 
 type PanelComponent = ComponentType<{ data: SessionData; area?: string }>;
 
@@ -283,6 +284,7 @@ function App() {
   if (path === '/season-stats') return <SeasonStatsPage />;
   if (path === '/driver-season') return <DriverSeasonPage />;
   if (path === '/circuit') return <CircuitGuidePage />;
+  if (path === '/head-to-head') return <CareerH2HPage />;
   if (path === '/report')
     return (
       <div className="page">
