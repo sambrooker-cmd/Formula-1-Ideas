@@ -4,6 +4,7 @@ import type { SessionData } from '../data/session';
 import { formatClock, trackStatusAt } from '../data/state';
 import { useNow } from '../hooks';
 import { Panel } from './Panel';
+import { useTranscripts } from '../data/radio';
 import { STATUS_LABEL } from './PlaybackBar';
 
 const FLAG_COLOUR: Record<string, string> = {
@@ -24,6 +25,7 @@ type Item =
 export function RaceControl({ data, area, lead }: { data: SessionData; area?: string; lead?: React.ReactNode }) {
   const t = useNow(4);
   const [showRadio, setShowRadio] = useState(true);
+  const texts = useTranscripts(data);
   const audio = useRef<HTMLAudioElement | null>(null);
 
   const items = useMemo<Item[]>(() => {
@@ -118,6 +120,7 @@ export function RaceControl({ data, area, lead }: { data: SessionData; area?: st
               <span className="muted">
                 <b style={{ color: data.drivers.get(i.driver)?.colour }}>{data.drivers.get(i.driver)?.code ?? i.driver}</b> team radio
                 <button className="radio-btn" onClick={() => play(i.url)}>▶ play</button>
+                {texts?.[i.url] && <span className="radio-text">“{texts[i.url]}”</span>}
               </span>
             )}
           </li>

@@ -15,6 +15,8 @@ export interface CachedSession {
   size_mb: number;
   /** Hosted practice sessions: lap data only (long runs), no car positions or telemetry. */
   lite?: boolean;
+  /** Team radio transcripts published (hosted site). */
+  radio?: boolean;
 }
 
 async function getJson<T>(url: string): Promise<T> {

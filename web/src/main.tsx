@@ -31,6 +31,8 @@ import { Battles } from './components/Battles';
 import { Starts } from './components/Starts';
 import { Ratings } from './components/Ratings';
 import { Predictor } from './components/Predictor';
+import { Commentary } from './components/Commentary';
+import { TeamRadio } from './components/TeamRadio';
 import { openMiniWindow, Strip } from './components/Strip';
 
 // three.js is big: only load it when the 3D page is opened.
@@ -67,6 +69,8 @@ const SINGLE: Record<string, PanelComponent> = {
   '/starts': Starts,
   '/ratings': Ratings,
   '/predictor': Predictor,
+  '/commentary': Commentary,
+  '/radio': TeamRadio,
 };
 
 /** Pit wall bottom-right: tyre strategy or the live championship. */
@@ -129,6 +133,8 @@ function ControlTabs({ data, area = 'rc' }: { data: SessionData; area?: string }
       tabs={[
         { id: 'messages', label: 'Messages', render: (lead) => <RaceControl data={data} area={area} lead={lead} /> },
         { id: 'moments', label: 'Moments', render: (lead) => <KeyMoments data={data} area={area} lead={lead} /> },
+        { id: 'commentary', label: 'Commentary', render: (lead) => <Commentary data={data} area={area} lead={lead} /> },
+        { id: 'radio', label: 'Radio', render: (lead) => <TeamRadio data={data} area={area} lead={lead} /> },
         { id: 'battles', label: 'Battles', render: (lead) => <Battles data={data} area={area} lead={lead} /> },
         { id: 'predictor', label: 'Predictor', render: (lead) => <Predictor data={data} area={area} lead={lead} /> },
       ]}

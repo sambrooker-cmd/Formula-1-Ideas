@@ -2,7 +2,8 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import type { SessionData } from '../data/session';
 import { carPosition, isRetired, lastAtOrBefore, leaderLap, weatherAt } from '../data/state';
 import { clock, getState, now } from '../sync/clock';
-import { useElementSize, useNow } from '../hooks';
+import { useElementSize, useNow, useStoredFlag } from '../hooks';
+import { CaptionLine } from './Commentary';
 import { Panel } from './Panel';
 import { StatusPill } from './PlaybackBar';
 import { predictPit, type PitPrediction } from '../data/pitstop';
@@ -86,6 +87,7 @@ export function TrackMap({ data, area }: { data: SessionData; area?: string }) {
   const [wrapRef, size] = useElementSize<HTMLDivElement>();
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const t = useNow(4);
+  const [captions, setCaptions] = useStoredFlag('pitwall.captions', true);
 
   const outline = useMemo<Pt[]>(() => {
     if (data.meta.outline.length > 50) return data.meta.outline;
@@ -345,6 +347,13 @@ export function TrackMap({ data, area }: { data: SessionData; area?: string }) {
               🔧 Pit predictor
             </button>
           )}
+          <button
+            className={'icon-btn' + (captions ? ' active' : '')}
+            onClick={() => setCaptions(!captions)}
+            title="Captions: a line of commentary about what's happening"
+          >
+            💬
+          </button>
           <button className="icon-btn" onClick={rotate} title="Rotate the map (cycles 45° steps, then back to auto-fit)">
             ↻ {rotation == null ? 'auto' : rotation + '°'}
           </button>
@@ -377,6 +386,7 @@ export function TrackMap({ data, area }: { data: SessionData; area?: string }) {
           )}
         </div>
       )}
+      {captions && <CaptionLine data={data} t={t} />}
       {w && (
         <div className="weather" style={{ position: 'absolute', left: 12, bottom: 10, pointerEvents: 'none' }}>
           <span>AIR <b>{w.air.toFixed(1)}°</b></span>

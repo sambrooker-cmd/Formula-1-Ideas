@@ -154,3 +154,24 @@ function followHostedLive(setLoad: (l: SessionLoad) => void) {
     off();
   };
 }
+
+/** An on/off setting remembered in this browser. */
+export function useStoredFlag(key: string, initial: boolean): [boolean, (v: boolean) => void] {
+  const [v, setV] = useState<boolean>(() => {
+    try {
+      const s = localStorage.getItem(key);
+      return s == null ? initial : s === '1';
+    } catch {
+      return initial;
+    }
+  });
+  const set = (next: boolean) => {
+    setV(next);
+    try {
+      localStorage.setItem(key, next ? '1' : '0');
+    } catch {
+      // ignore
+    }
+  };
+  return [v, set];
+}

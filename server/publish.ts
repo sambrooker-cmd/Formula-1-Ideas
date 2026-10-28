@@ -17,6 +17,7 @@ import { listCachedSessions, sessionDbPath } from './db.ts';
 import zlib from 'node:zlib';
 import { encodeSamples, ensurePack } from './pack.ts';
 import { PACK_VERSION } from '../shared/pack.ts';
+import { canTranscribe, MODEL, transcribeAll, type RadioTranscripts } from './transcribe.ts';
 
 const { values } = parseArgs({
   options: {
@@ -55,9 +56,12 @@ interface Entry {
   complete: true;
   size_mb: number;
   lite?: boolean;
+  /** Team radio transcripts are published (s/<key>.radio.json). */
+  radio?: boolean;
 }
 
 const files = (key: number) => ({ meta: path.join(FILES, `${key}.meta.json.gz`), samples: path.join(FILES, `${key}.samples.bin.gz`) });
+const radioFile = (key: number) => path.join(FILES, `${key}.radio.json`);
 const published = (key: number) => fs.existsSync(files(key).meta) && fs.existsSync(files(key).samples);
 /** Published with an older replay format (e.g. before heights were added for the 3D view)? */
 function outdated(key: number) {
@@ -89,7 +93,7 @@ async function restoreFromSite(site: string) {
   const restored: Entry[] = [];
   for (const e of remote) {
     if (published(e.session_key)) {
-      restored.push(e);
+      restored.push({ ...e, radio: fs.existsSync(radioFile(e.session_key)) || undefined });
       continue;
     }
     try {
@@ -97,6 +101,10 @@ async function restoreFromSite(site: string) {
         const r = await fetch(new URL(`/data/s/${e.session_key}.${kind === 'meta' ? 'meta.json' : 'samples.bin'}.gz`, site));
         if (!r.ok) throw new Error(`${r.status}`);
         fs.writeFileSync(file, Buffer.from(await r.arrayBuffer()));
+      }
+      if (e.radio) {
+        const r = await fetch(new URL(`/data/s/${e.session_key}.radio.json`, site));
+        if (r.ok) fs.writeFileSync(radioFile(e.session_key), Buffer.from(await r.arrayBuffer()));
       }
       restored.push(e);
       console.log(`Restored ${e.year} ${e.meeting_name} · ${e.session_name} from the live site`);
@@ -196,6 +204,35 @@ for (const [i, s] of todo.entries()) {
     console.error(`Skipped ${label}: ${(err as Error).message}`);
   }
 }
+
+// Team radio transcripts, when the speech model is installed (the GitHub job installs it).
+if (await canTranscribe()) {
+  const deadline = Number.isFinite(budgetMs) ? startedAt + budgetMs + 15 * 60_000 : Infinity;
+  for (const e of [...list].sort((a, b) => b.date_start - a.date_start)) {
+    if (e.lite || Date.now() > deadline) continue;
+    let urls: string[] = [];
+    try {
+      urls = JSON.parse(zlib.gunzipSync(fs.readFileSync(files(e.session_key).meta)).toString()).radio.map((r: [number, number, string]) => r[2]);
+    } catch {
+      continue;
+    }
+    let have: RadioTranscripts | null = null;
+    try {
+      have = JSON.parse(fs.readFileSync(radioFile(e.session_key), 'utf8'));
+    } catch {
+      // none yet
+    }
+    if (!urls.length || (have?.model === MODEL && urls.every((u) => u in have!.texts))) {
+      e.radio = !!have || undefined;
+      continue;
+    }
+    console.log(`Transcribing ${urls.length} radio clips: ${e.year} ${e.meeting_name} · ${e.session_name}`);
+    const done = await transcribeAll(urls, have, deadline);
+    fs.writeFileSync(radioFile(e.session_key), JSON.stringify(done));
+    e.radio = true;
+    changed = true;
+  }
+} else console.log('Speech model not installed: no radio transcripts this run');
 
 list.sort((a, b) => b.date_start - a.date_start);
 fs.writeFileSync(LIST, JSON.stringify(list, null, 1));

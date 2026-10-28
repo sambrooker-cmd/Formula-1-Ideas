@@ -62,7 +62,7 @@ function build(data: SessionData): Moment[] {
     } else if (neutralised && (s.status === 'GREEN' || s.status === 'YELLOW')) {
       out.push({ t: s.t, kind: 'flag', weight: 2, drivers: [], text: race ? 'Green flag: racing resumes' : 'Green flag', lap: lapAt(data, null, s.t) });
       neutralised = false;
-    } else if (s.status === 'CHEQUERED') {
+    } else if (s.status === 'CHEQUERED' && !out.some((m) => m.kind === 'finish')) {
       out.push({ t: s.t, kind: 'finish', weight: 3, drivers: [], text: 'Chequered flag', lap: lapAt(data, null, s.t) });
       neutralised = false;
     } else if (text && s.status === 'RED') {
@@ -160,4 +160,36 @@ function build(data: SessionData): Moment[] {
   }
 
   return out.sort((x, y) => x.t - y.t);
+}
+
+// ---- highlights ----
+
+export const LEAD_IN = 8000; // jump this far before a moment so you see it build up
+export const HIGHLIGHT_LENGTH = 22_000; // how long each highlight plays before moving on
+
+/**
+ * The moments to play. Without a time limit: every notable moment. With one (catch-up), the
+ * biggest moments that fit, always including the start, flags and the finish; moments close
+ * together share one clip.
+ */
+export function highlightReel(all: Moment[], raceStart: number, minutes: number | null): Moment[] {
+  const firstFinish = all.find((m) => m.kind === 'finish');
+  const pool = all.filter((m) => m.t >= raceStart - 1000 && (minutes != null || m.weight >= 2) && (m.kind !== 'finish' || m == firstFinish));
+  // One clip per cluster of moments (the first moment starts it), scored by what's in it.
+  const clips: { m: Moment; score: number; must: boolean }[] = [];
+  for (const m of pool) {
+    const last = clips[clips.length - 1];
+    const forPlace = Number(/for P(\d+)/.exec(m.text)?.[1] ?? 99);
+    const restart = m.kind === 'flag' && /^Green/.test(m.text);
+    const w = restart ? 1 : m.weight ** 2 * (m.kind === 'overtake' ? (forPlace <= 3 ? 2 : forPlace <= 10 ? 1.2 : 0.8) : 1);
+    const must = m.kind === 'start' || m.kind === 'finish' || (m.kind === 'flag' && !restart);
+    if (last && m.t - last.m.t < HIGHLIGHT_LENGTH - LEAD_IN) {
+      last.score += w;
+      last.must ||= must;
+    } else clips.push({ m, score: w, must });
+  }
+  if (minutes == null) return clips.map((c) => c.m);
+  const fit = Math.max(3, Math.floor((minutes * 60_000) / HIGHLIGHT_LENGTH));
+  const chosen = [...clips].sort((a, b) => Number(b.must) - Number(a.must) || b.score - a.score).slice(0, fit);
+  return chosen.map((c) => c.m).sort((a, b) => a.t - b.t);
 }

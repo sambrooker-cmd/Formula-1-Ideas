@@ -100,6 +100,32 @@ app.get('/api/settings', async () => ({ ...readSettings(), auto: autoStatus }));
 
 const USER_DIR = path.join(CACHE_DIR, 'user');
 const userFile = (key: string) => (/^[a-z0-9-]{1,40}$/.test(key) ? path.join(USER_DIR, key + '.json') : null);
+// Team radio transcripts: made by the hosted site's publish job (see transcribe.ts), or on this
+// computer with `npx tsx server/transcribe.ts <key>`. Fetched from the site and kept here.
+const RADIO_DIR = path.join(CACHE_DIR, 'radio');
+const radioMisses = new Map<number, number>();
+app.get<{ Params: { key: string } }>('/api/sessions/:key/radio', async (req, reply) => {
+  const key = Number(req.params.key);
+  if (!Number.isInteger(key)) return reply.code(400).send({ error: 'bad key' });
+  const file = path.join(RADIO_DIR, `${key}.json`);
+  if (fs.existsSync(file)) return JSON.parse(fs.readFileSync(file, 'utf8'));
+  if (Date.now() - (radioMisses.get(key) ?? 0) < 3 * 3600e3) return reply.code(404).send({ error: 'no transcripts' });
+  try {
+    const hosting = JSON.parse(fs.readFileSync(path.join(import.meta.dirname, '..', 'web', 'src', 'hosting.config.json'), 'utf8'));
+    const project = hosting.firebase?.projectId;
+    if (!project) throw new Error('no hosted site');
+    const res = await fetch(`https://${project}.web.app/data/s/${key}.radio.json`);
+    const body = res.ok ? await res.json() : null; // the site answers missing files with its page, which isn't JSON
+    if (!body?.texts) throw new Error('not published');
+    fs.mkdirSync(RADIO_DIR, { recursive: true });
+    fs.writeFileSync(file, JSON.stringify(body));
+    return body;
+  } catch {
+    radioMisses.set(key, Date.now());
+    return reply.code(404).send({ error: 'no transcripts' });
+  }
+});
+
 app.get<{ Params: { key: string } }>('/api/user/:key', async (req, reply) => {
   const f = userFile(req.params.key);
   if (!f) return reply.code(400).send({ error: 'bad key' });
