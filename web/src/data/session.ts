@@ -8,6 +8,8 @@ export type Num = { readonly length: number; [i: number]: number };
 export interface DriverSamples {
   locT: Num;
   locX: Num;
+  /** Height (decimetres); empty for older replay files and free live mode. */
+  locZ: Num;
   locY: Num;
   carT: Num;
   speed: Num;
@@ -178,6 +180,7 @@ export function index(meta: PackMeta, buf: ArrayBuffer): SessionData {
       locT: g(`loc.${d.number}.t`),
       locX: g(`loc.${d.number}.x`),
       locY: g(`loc.${d.number}.y`),
+      locZ: g(`loc.${d.number}.z`),
       carT,
       speed,
       throttle: g(`car.${d.number}.throttle`),
@@ -307,16 +310,17 @@ export function applyDelta(data: SessionData, topics: Record<string, any[]>) {
     if (!data.drivers.has(d.number)) {
       meta.drivers.push(d);
       data.driverOrder.push(d.number);
-      data.samples.set(d.number, growable({ locT: [], locX: [], locY: [], carT: [], speed: [], throttle: [], brake: [], rpm: [], gear: [], drs: [], dist: [] }));
+      data.samples.set(d.number, growable({ locT: [], locX: [], locY: [], locZ: [], carT: [], speed: [], throttle: [], brake: [], rpm: [], gear: [], drs: [], dist: [] }));
     }
     data.drivers.set(d.number, d);
   }
-  for (const [n, t, x, y] of topics.location ?? []) {
+  for (const [n, t, x, y, z] of topics.location ?? []) {
     const s = data.samples.get(n) as unknown as Record<string, number[]> | undefined;
     if (!s || t <= lastT(s.locT)) continue;
     s.locT.push(t);
     s.locX.push(x);
     s.locY.push(y);
+    if (s.locZ.length === s.locY.length - 1) s.locZ.push(z ?? 0);
     meta.end = Math.max(meta.end, t);
   }
   for (const [n, t, speed, throttle, brake, rpm, gear, drs] of topics.car_data ?? []) {

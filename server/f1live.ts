@@ -328,7 +328,7 @@ class F1Feed {
       }
       if (f == null) continue;
       const p = this.pointAt(f);
-      if (p) store.apply('location', { driver_number: Number(n), date: iso(t), x: Math.round(p[0]), y: Math.round(p[1]), z: 1 });
+      if (p) store.apply('location', { driver_number: Number(n), date: iso(t), x: Math.round(p[0]), y: Math.round(p[1]), z: 0 }); // no height: the 3D view uses the track's
     }
   }
 

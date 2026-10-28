@@ -19,11 +19,13 @@
   "dependencies": {
     "@fastify/static": "^10.1.6",
     "@fastify/websocket": "^11.3.4",
+    "@types/three": "^0.186.0",
     "fastify": "^5.12.7",
     "firebase": "^13.1.0",
     "mqtt": "^5.16.1",
     "react": "^19.3.1",
     "react-dom": "^19.3.1",
+    "three": "^0.186.1",
     "uplot": "^1.6.32"
   },
   "devDependencies": {

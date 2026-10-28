@@ -2,7 +2,7 @@
 // All times are integer milliseconds relative to `t0` (an epoch ms reference).
 // Event lists are compact tuples rather than objects to keep the payload small.
 
-export const PACK_VERSION = 2;
+export const PACK_VERSION = 3; // 3: adds loc.<n>.z (height)
 
 export interface PackMeta {
   version: number;
@@ -66,5 +66,5 @@ export interface SamplesHeader {
 }
 
 // Keys used in the samples file, per driver number n:
-//   loc.<n>.t / loc.<n>.x / loc.<n>.y          (i32)
+//   loc.<n>.t / loc.<n>.x / loc.<n>.y          (i32), loc.<n>.z (i16, decimetres; v3+)
 //   car.<n>.t (i32) speed (i16) throttle (u8) brake (u8) rpm (u16) gear (u8) drs (u8, 255 = null)

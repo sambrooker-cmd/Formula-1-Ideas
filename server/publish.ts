@@ -16,6 +16,7 @@ import { ingestSession } from './ingest.ts';
 import { listCachedSessions, sessionDbPath } from './db.ts';
 import zlib from 'node:zlib';
 import { encodeSamples, ensurePack } from './pack.ts';
+import { PACK_VERSION } from '../shared/pack.ts';
 
 const { values } = parseArgs({
   options: {
@@ -56,6 +57,14 @@ interface Entry {
 
 const files = (key: number) => ({ meta: path.join(FILES, `${key}.meta.json.gz`), samples: path.join(FILES, `${key}.samples.bin.gz`) });
 const published = (key: number) => fs.existsSync(files(key).meta) && fs.existsSync(files(key).samples);
+/** Published with an older replay format (e.g. before heights were added for the 3D view)? */
+function outdated(key: number) {
+  try {
+    return JSON.parse(zlib.gunzipSync(fs.readFileSync(files(key).meta)).toString()).version < PACK_VERSION;
+  } catch {
+    return true;
+  }
+}
 
 function readList(): Entry[] {
   try {
@@ -120,7 +129,7 @@ if (values.site) {
 // Drop list entries whose files have gone missing.
 list = list.filter((e) => published(e.session_key));
 
-const todo = (await wantedSessions()).filter((s) => !published(s.session_key)).slice(0, Number(values.max));
+const todo = (await wantedSessions()).filter((s) => !published(s.session_key) || outdated(s.session_key)).slice(0, Number(values.max));
 console.log(todo.length ? `${todo.length} session(s) to publish` : 'Nothing new to publish');
 
 let changed = false;

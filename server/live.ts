@@ -23,7 +23,7 @@ const TOPICS = [
 type Topic = (typeof TOPICS)[number];
 
 interface Samples {
-  loc: { t: number[]; x: number[]; y: number[] };
+  loc: { t: number[]; x: number[]; y: number[]; z: number[] };
   car: { t: number[]; speed: number[]; throttle: number[]; brake: number[]; rpm: number[]; gear: number[]; drs: (number | null)[] };
 }
 
@@ -87,7 +87,7 @@ class LiveStore {
     let s = this.samples.get(n);
     if (!s) {
       s = {
-        loc: { t: [], x: [], y: [] },
+        loc: { t: [], x: [], y: [], z: [] },
         car: { t: [], speed: [], throttle: [], brake: [], rpm: [], gear: [], drs: [] },
       };
       this.samples.set(n, s);
@@ -114,7 +114,7 @@ class LiveStore {
         if (r.x === 0 && r.y === 0 && r.z === 0) return;
         const t = this.rel(r.date)!;
         const s = this.driverSamples(r.driver_number).loc;
-        if (sortedInsert(s.t, t, [s.x, s.y], [r.x, r.y])) this.emit('location', [r.driver_number, t, r.x, r.y]);
+        if (sortedInsert(s.t, t, [s.x, s.y, s.z], [r.x, r.y, r.z ?? 0])) this.emit('location', [r.driver_number, t, r.x, r.y, r.z ?? 0]);
         return;
       }
       case 'car_data': {

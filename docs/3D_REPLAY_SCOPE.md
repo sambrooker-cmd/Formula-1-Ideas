@@ -1,5 +1,7 @@
 # 3D replay: scope
 
+> **Status: built** (`/3d`, see `web/src/three/`). Kept below as the original scope.
+
 A 3D view of a replay: the circuit as a ribbon with its real elevation, cars moving on it, and a camera you can orbit, follow a car with, or put on board. Measured against real data (Abu Dhabi and Zandvoort 2025) on 28 Oct 2026.
 
 ## Verdict

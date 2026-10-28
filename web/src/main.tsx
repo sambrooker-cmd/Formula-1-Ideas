@@ -1,4 +1,4 @@
-import { StrictMode, type ComponentType } from 'react';
+import { lazy, StrictMode, Suspense, type ComponentType } from 'react';
 import { createRoot } from 'react-dom/client';
 import './styles.css';
 import type { SessionData } from './data/session';
@@ -23,6 +23,9 @@ import { SignInGate } from './components/SignInGate';
 import { RaceReport } from './components/RaceReport';
 import { LongRuns } from './components/LongRuns';
 import { Cockpit } from './components/Cockpit';
+
+// three.js is big: only load it when the 3D page is opened.
+const Replay3D = lazy(() => import('./three/Replay3D'));
 import { SeasonStatsPage } from './components/SeasonStats';
 import { DriverSeasonPage } from './components/DriverSeason';
 import { CircuitGuidePage } from './components/CircuitGuide';
@@ -104,6 +107,11 @@ function TopBar({ data }: { data?: SessionData }) {
         </span>
       )}
       <span style={{ flex: 1 }} />
+      {data && location.pathname !== '/3d' && (
+        <a className="icon-btn" href="/3d" target="_blank" rel="noopener" style={{ textDecoration: 'none' }} title="The replay in 3D, in a new window">
+          🧊 3D
+        </a>
+      )}
       {data && location.pathname !== '/report' && (
         <a className="icon-btn" href="/report" target="_blank" rel="noopener" style={{ textDecoration: 'none' }} title="A written summary of this session">
           📰 Report
@@ -247,6 +255,16 @@ function App() {
           )}
         </WithSession>
       </div>
+    );
+  if (path === '/3d')
+    return (
+      <FullPage>
+        {(data) => (
+          <Suspense fallback={<div className="center-msg">Loading 3D…</div>}>
+            <Replay3D data={data} />
+          </Suspense>
+        )}
+      </FullPage>
     );
   if (path === '/cockpit') return <FullPage compactBar>{(data) => <Cockpit data={data} />}</FullPage>;
   if (path === '/tv') return <FullPage compactBar topBar={false}>{(data) => <TvMode data={data} />}</FullPage>;

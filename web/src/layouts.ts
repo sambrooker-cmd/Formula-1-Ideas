@@ -18,6 +18,7 @@ export const PANEL_ROUTES = [
   { path: '/companion', title: 'TV companion' },
   { path: '/driver', title: 'Driver dashboard' },
   { path: '/cockpit', title: 'Virtual cockpit' },
+  { path: '/3d', title: '3D replay' },
   { path: '/tv', title: 'TV mode' },
   { path: '/report', title: 'Race report' },
 ] as const;

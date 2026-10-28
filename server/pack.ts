@@ -91,14 +91,14 @@ export function buildPack(sessionKey: number) {
 
     const samples = encodeSamples(
       drivers.map((d) => {
-        const loc = db.prepare('SELECT t, x, y FROM location WHERE driver_number = ? ORDER BY t').raw().all(d.number) as number[][];
+        const loc = db.prepare('SELECT t, x, y, z FROM location WHERE driver_number = ? ORDER BY t').raw().all(d.number) as number[][];
         const car = db
           .prepare('SELECT t, speed, throttle, brake, rpm, gear, drs FROM car_data WHERE driver_number = ? ORDER BY t')
           .raw()
           .all(d.number) as (number | null)[][];
         return {
           number: d.number,
-          loc: { t: loc.map((r) => r[0] - t0), x: loc.map((r) => r[1]), y: loc.map((r) => r[2]) },
+          loc: { t: loc.map((r) => r[0] - t0), x: loc.map((r) => r[1]), y: loc.map((r) => r[2]), z: loc.map((r) => r[3]) },
           car: {
             t: car.map((r) => r[0]! - t0),
             speed: car.map((r) => r[1]),
@@ -125,7 +125,8 @@ type Col = ArrayLike<number | null>;
 export interface DriverColumns {
   number: number;
   /** Times already relative to t0. */
-  loc: { t: Col; x: Col; y: Col };
+  /** z (height) is optional: free live mode has none. */
+  loc: { t: Col; x: Col; y: Col; z?: Col };
   car: { t: Col; speed: Col; throttle: Col; brake: Col; rpm: Col; gear: Col; drs: Col };
 }
 
@@ -151,6 +152,7 @@ export function encodeSamples(perDriver: DriverColumns[]) {
     push(`loc.${d.number}.t`, 'i32', Int32Array.from(loc.t, n0));
     push(`loc.${d.number}.x`, 'i32', Int32Array.from(loc.x, n0));
     push(`loc.${d.number}.y`, 'i32', Int32Array.from(loc.y, n0));
+    if (loc.z) push(`loc.${d.number}.z`, 'i16', Int16Array.from(loc.z, (v) => Math.max(-32768, Math.min(32767, v ?? 0))));
     push(`car.${d.number}.t`, 'i32', Int32Array.from(car.t, n0));
     push(`car.${d.number}.speed`, 'i16', Int16Array.from(car.speed, n0));
     push(`car.${d.number}.throttle`, 'u8', Uint8Array.from(car.throttle, (v) => Math.min(255, v ?? 0)));
