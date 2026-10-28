@@ -5,6 +5,8 @@ import {
   driverStats,
   fullName,
   pointsProgression,
+  rolling,
+  teamQualiPace,
   teammateBattles,
   teamStats,
   type DriverStats,
@@ -115,6 +117,8 @@ function SeasonBody({ h }: { h: SeasonHistory }) {
         </div>
         <LineChart series={series} xLabels={prog.rounds.map((r) => `R${r}`)} height={280} xEvery={Math.ceil(prog.rounds.length / 12)} yMin={0} />
       </section>
+
+      <TeamPace h={h} />
 
       <section className="doc-section">
         <h2>Drivers</h2>
@@ -247,5 +251,80 @@ function SeasonBody({ h }: { h: SeasonHistory }) {
       </section>
       <p className="dim" style={{ fontSize: 11 }}>Results from Jolpica. Saved in this browser, so it's instant next time.</p>
     </>
+  );
+}
+
+/** Who's been getting faster: each team's qualifying gap to the fastest, through the season. */
+function TeamPace({ h }: { h: SeasonHistory }) {
+  const { rounds, gaps } = useMemo(() => teamQualiPace(h), [h]);
+  const [only, setOnly] = useState<string | null>(null);
+  if (rounds.length < 2) return null;
+  const teams = [...gaps.keys()].filter((t) => gaps.get(t)!.some((v) => v != null));
+  const smooth = new Map(teams.map((t) => [t, rolling(gaps.get(t)!, 3)]));
+  // Change: average of the last 3 rounds against the 3 before them.
+  const avg = (xs: (number | null)[]) => {
+    const v = xs.filter((x): x is number => x != null);
+    return v.length ? v.reduce((a, b) => a + b, 0) / v.length : null;
+  };
+  const rows = teams
+    .map((t) => {
+      const g = gaps.get(t)!;
+      const recent = avg(g.slice(-3));
+      const before = avg(g.slice(-6, -3));
+      return { t, recent, change: recent != null && before != null ? recent - before : null, season: avg(g) };
+    })
+    .sort((a, b) => (a.recent ?? 9) - (b.recent ?? 9));
+  const shown = only ? [only] : teams;
+  return (
+    <section className="doc-section">
+      <div className="doc-section-head">
+        <h2>Team pace through the season</h2>
+        {only && (
+          <button className="icon-btn" onClick={() => setOnly(null)}>
+            Show all teams
+          </button>
+        )}
+      </div>
+      <LineChart
+        series={shown.map((t) => ({ id: t, label: h.teams[t].replace(/ F1 Team| Racing/g, ''), colour: teamColour(t), values: smooth.get(t)! }))}
+        xLabels={rounds.map((r) => `R${r}`)}
+        height={260}
+        invert
+        yMin={0}
+        xEvery={Math.ceil(rounds.length / 12)}
+        yFormat={(v) => `${v.toFixed(1)}%`}
+      />
+      <div className="table-scroll">
+        <table className="doc-table" style={{ maxWidth: 640 }}>
+          <thead>
+            <tr>
+              <th className="l">Team</th>
+              <th title="Average gap to the fastest qualifying lap over the last 3 rounds">Last 3 rounds</th>
+              <th title="Last 3 rounds against the 3 before them">Change</th>
+              <th>Season</th>
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((r) => (
+              <tr key={r.t} onClick={() => setOnly(only === r.t ? null : r.t)} style={{ cursor: 'pointer' }}>
+                <td className="l">
+                  <i className="team-bar" style={{ background: teamColour(r.t) }} />
+                  {h.teams[r.t]}
+                </td>
+                <td className="num">{r.recent == null ? '–' : `${r.recent.toFixed(2)}%`}</td>
+                <td className={'num ' + (r.change == null ? '' : r.change < -0.1 ? 'good' : r.change > 0.1 ? 'bad' : 'dim')}>
+                  {r.change == null ? '' : `${r.change < 0 ? '▲ ' : r.change > 0 ? '▼ ' : ''}${Math.abs(r.change).toFixed(2)}%`}
+                </td>
+                <td className="num muted">{r.season == null ? '–' : `${r.season.toFixed(2)}%`}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      <p className="dim" style={{ fontSize: 11 }}>
+        Each team's fastest qualifying lap as a % behind the fastest of all, averaged over 3 rounds (lower is faster). ▲ means they've closed in recently, which is
+        often an upgrade working. Wet qualifying sessions add noise. Click a team to show just its line.
+      </p>
+    </section>
   );
 }

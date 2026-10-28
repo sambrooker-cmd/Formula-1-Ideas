@@ -368,3 +368,35 @@ export function lapSeconds(s: string | null) {
   const m = /^(?:(\d+):)?(\d+(?:\.\d+)?)$/.exec(s.trim());
   return m ? Number(m[1] ?? 0) * 60 + Number(m[2]) : null;
 }
+
+/**
+ * Qualifying pace by team, round by round: each team's fastest lap anywhere in qualifying as a
+ * percentage behind the fastest of all (the usual "supertime" measure). Rounds where a team set
+ * no time are null.
+ */
+export function teamQualiPace(h: SeasonHistory) {
+  const rounds = [...new Set(h.quali.map((q) => q[0]))].sort((a, b) => a - b);
+  const teams = Object.keys(h.teams);
+  const gaps = new Map<string, (number | null)[]>(teams.map((t) => [t, []]));
+  for (const round of rounds) {
+    const rows = h.quali.filter((q) => q[0] === round);
+    const best = new Map<string, number>();
+    for (const q of rows) {
+      const times = [q[4], q[5], q[6]].map(lapSeconds).filter((x): x is number => x != null);
+      if (!times.length) continue;
+      const t = Math.min(...times);
+      best.set(q[2], Math.min(best.get(q[2]) ?? Infinity, t));
+    }
+    const pole = Math.min(...best.values());
+    for (const t of teams) gaps.get(t)!.push(best.has(t) && Number.isFinite(pole) ? ((best.get(t)! - pole) / pole) * 100 : null);
+  }
+  return { rounds, gaps };
+}
+
+/** Rolling average over `n` rounds, skipping missing values. */
+export function rolling(values: (number | null)[], n = 3) {
+  return values.map((_, i) => {
+    const w = values.slice(Math.max(0, i - n + 1), i + 1).filter((v): v is number => v != null);
+    return w.length ? w.reduce((a, b) => a + b, 0) / w.length : null;
+  });
+}
