@@ -31,6 +31,7 @@ import { Battles } from './components/Battles';
 import { Starts } from './components/Starts';
 import { Ratings } from './components/Ratings';
 import { Predictor } from './components/Predictor';
+import { ReplayGate, WatchedMarker } from './components/Spoilers';
 import { Commentary } from './components/Commentary';
 import { TeamRadio } from './components/TeamRadio';
 import { Overtakes } from './components/Overtakes';
@@ -225,6 +226,7 @@ function Wall() {
           <>
             <TopBar data={data} />
             <AlertsHost data={data} />
+            <WatchedMarker data={data} />
             <div className="wall">
               <TrackMap data={data} area="map" />
               <TimingTower data={data} area="tower" />
@@ -249,6 +251,7 @@ function Companion() {
           <>
             <TopBar data={data} />
             <AlertsHost data={data} />
+            <WatchedMarker data={data} />
             <div className="companion">
               <TrackMap data={data} area="map" />
               <TimingTower data={data} area="tower" />
@@ -271,6 +274,7 @@ function FullPage({ children, compactBar = false, topBar = true }: { children: (
           <>
             {topBar && <TopBar data={data} />}
             <AlertsHost data={data} />
+            <WatchedMarker data={data} />
             <div className="page-body">{children(data)}</div>
             <PlaybackBar data={data} compact={compactBar} />
           </>
@@ -280,6 +284,9 @@ function FullPage({ children, compactBar = false, topBar = true }: { children: (
   );
 }
 
+/** Single panels that look at the whole race (hidden in spoiler-free mode until it's watched). */
+const GATED = ['/ratings', '/overtakes', '/battles', '/strategy-sim'];
+
 function Single({ Component }: { Component: PanelComponent }) {
   const hideBar = new URLSearchParams(location.search).get('bar') === '0';
   return (
@@ -287,8 +294,15 @@ function Single({ Component }: { Component: PanelComponent }) {
       <WithSession>
         {(data) => (
           <>
+            <WatchedMarker data={data} />
             <div className="page-body">
-              <Component data={data} />
+              {GATED.includes(location.pathname) ? (
+                <ReplayGate data={data} what="This analysis">
+                  <Component data={data} />
+                </ReplayGate>
+              ) : (
+                <Component data={data} />
+              )}
             </div>
             {!hideBar && <PlaybackBar data={data} compact />}
           </>
@@ -331,7 +345,16 @@ function App() {
         <WithSession>{(data) => <Strip data={data} row={new URLSearchParams(location.search).get('layout') === 'row'} />}</WithSession>
       </div>
     );
-  if (path === '/analysis') return <FullPage>{(data) => <AnalysisPage data={data} />}</FullPage>;
+  if (path === '/analysis')
+    return (
+      <FullPage>
+        {(data) => (
+          <ReplayGate data={data} what="The analysis of the whole race">
+            <AnalysisPage data={data} />
+          </ReplayGate>
+        )}
+      </FullPage>
+    );
   if (path === '/3d')
     return (
       <FullPage>

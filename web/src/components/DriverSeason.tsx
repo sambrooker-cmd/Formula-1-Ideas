@@ -1,4 +1,5 @@
 // A driver's season: headline numbers, the team-mate battle, points over the season and every race.
+import { finishedRaces, SpoilerGate } from './Spoilers';
 import { useEffect, useMemo, useState } from 'react';
 import { carNumber, completedRounds, driverStats, fullName, headToHead, isDnf, pointsProgression, type SeasonHistory } from '../data/history';
 import { season as loadSeason } from '../api';
@@ -12,7 +13,11 @@ export function DriverSeasonPage() {
   return (
     <DocShell active="driver">
       <Loading h={h} error={error} what={`the ${year} season`} />
-      {h && <DriverBody h={h} id={param('driver')} />}
+      {h && (
+        <SpoilerGate races={finishedRaces(h)} what="Driver pages">
+          <DriverBody h={h} id={param('driver')} />
+        </SpoilerGate>
+      )}
     </DocShell>
   );
 }

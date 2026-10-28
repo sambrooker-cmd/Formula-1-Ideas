@@ -1,4 +1,5 @@
 // Shared pieces for the season, driver and circuit pages.
+import { SpoilerToggle } from './Spoilers';
 import { useEffect, useState, type ReactNode } from 'react';
 import { jolpicaProgress, seasonHistory, type SeasonHistory } from '../data/history';
 
@@ -74,6 +75,7 @@ export function DocShell({ children, active }: { children: ReactNode; active?: '
           </a>
         </nav>
         <span style={{ flex: 1 }} />
+        <SpoilerToggle />
         <a className="icon-btn" href="/" style={{ textDecoration: 'none' }}>
           Sessions & layouts
         </a>

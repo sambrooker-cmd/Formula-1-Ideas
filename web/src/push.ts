@@ -6,6 +6,8 @@ export interface PushPrefs {
   reminders: 'off' | 'main' | 'all';
   incidents: boolean;
   results: boolean;
+  /** Follows spoiler-free mode: no results, and alerts don't say who's leading. */
+  spoilerFree?: boolean;
 }
 export const DEFAULT_PREFS: PushPrefs = { reminders: 'main', incidents: true, results: true };
 const PREFS_KEY = 'pitwall.push.prefs';

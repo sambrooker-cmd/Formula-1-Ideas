@@ -1,4 +1,5 @@
 // Season stats: points progression, the full driver and team tables, team-mate battles and winners.
+import { finishedRaces, SpoilerGate } from './Spoilers';
 import { TitleMaths } from './TitleMaths';
 import { FormGuide } from './FormGuide';
 import { PitStopTable } from './PitStopTable';
@@ -28,7 +29,11 @@ export function SeasonStatsPage() {
         <YearSelect year={year} onChange={(y) => go({ year: y })} />
       </div>
       <Loading h={h} error={error} what={`the ${year} season`} />
-      {h && <SeasonBody h={h} />}
+      {h && (
+        <SpoilerGate races={finishedRaces(h)} what="The season stats">
+          <SeasonBody h={h} />
+        </SpoilerGate>
+      )}
     </DocShell>
   );
 }

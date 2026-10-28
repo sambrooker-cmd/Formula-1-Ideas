@@ -1,4 +1,5 @@
 // Predictions: pick the podium before each race and score yourself over the season. Private.
+import { finishedRaces, SpoilerGate } from './Spoilers';
 import { useEffect, useMemo, useState } from 'react';
 import { completedRounds, fullName, type SeasonHistory } from '../data/history';
 import { loadUserData, saveUserData } from '../data/userstore';
@@ -36,7 +37,11 @@ export function PredictionsPage() {
         <YearSelect year={year} onChange={(y) => go({ year: y })} />
       </div>
       <Loading h={h} error={error} what={`the ${year} season`} />
-      {h && <Body h={h} />}
+      {h && (
+        <SpoilerGate races={finishedRaces(h)} what="Your prediction scores">
+          <Body h={h} />
+        </SpoilerGate>
+      )}
     </DocShell>
   );
 }

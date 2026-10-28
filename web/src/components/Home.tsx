@@ -5,6 +5,8 @@ import { captureLayout, openLayout, PANEL_ROUTES, PRESETS, savedLayouts, saveLay
 import { Footer } from './Footer';
 import { HOSTED } from '../env';
 import { NotificationsCard } from './Notifications';
+import { SpoilerGate, SpoilerToggle } from './Spoilers';
+import { raceId, useSpoilers } from '../spoilers';
 import { hostedLiveStatus, startHostedLive, subscribeHostedLive } from '../live/hostedLive';
 import { listSessions, season as loadSeason } from '../api';
 import { AccountLine } from './SignInGate';
@@ -235,6 +237,7 @@ function SeasonCard({ jobs, onOpen, onDownload }: { jobs: Job[]; onOpen: (key: n
   }, []);
 
   const next = season?.races.find((r) => Date.parse(r.start) + 3 * 3600e3 > now);
+  const spoiler = useSpoilers();
   const downloading = new Set(jobs.filter((j) => j.state === 'running' || j.state === 'queued').map((j) => j.sessionKey));
   const fmtDate = (iso: string) => new Date(iso).toLocaleDateString(undefined, { day: 'numeric', month: 'short' });
   const fmtWhen = (iso: string) =>
@@ -251,6 +254,7 @@ function SeasonCard({ jobs, onOpen, onDownload }: { jobs: Job[]; onOpen: (key: n
         </select>
         {season && season.afterRound > 0 && <span className="dim" style={{ fontSize: 12 }}>Standings after round {season.afterRound}</span>}
         <span style={{ flex: 1 }} />
+        <SpoilerToggle />
         <a className="icon-btn" href={`/season-stats?year=${year}`} style={{ textDecoration: 'none' }}>
           📊 Season stats
         </a>
@@ -296,7 +300,17 @@ function SeasonCard({ jobs, onOpen, onDownload }: { jobs: Job[]; onOpen: (key: n
                       <span className="dim cal-date"> · {fmtDate(r.start)}</span>
                     </span>
                     <span className="cal-winner" title={r.winner ? `${r.winner.name} · ${r.winner.team}` : undefined}>
-                      {r.winner ? <b>🏆 {r.winner.code}</b> : isNext ? <span className="green">Next</span> : ''}
+                      {r.winner ? (
+                        spoiler.hidden(raceId(year, r.round), r.start) ? (
+                          <span className="dim" title="Spoiler-free: watch the replay (or open a page about it and say you've watched it) to see the winner">🙈</span>
+                        ) : (
+                          <b>🏆 {r.winner.code}</b>
+                        )
+                      ) : isNext ? (
+                        <span className="green">Next</span>
+                      ) : (
+                        ''
+                      )}
                     </span>
                     <span className="cal-action">
                       {r.cached && r.sessionKey ? (
@@ -320,6 +334,10 @@ function SeasonCard({ jobs, onOpen, onDownload }: { jobs: Job[]; onOpen: (key: n
               })}
             </div>
             <div className="standings">
+              <SpoilerGate
+                races={season.races.filter((r) => r.winner).map((r) => ({ id: raceId(year, r.round), name: r.name, start: r.start }))}
+                what="The standings"
+              >
               <table className="tower">
                 <thead>
                   <tr>
@@ -367,6 +385,7 @@ function SeasonCard({ jobs, onOpen, onDownload }: { jobs: Job[]; onOpen: (key: n
                   ))}
                 </tbody>
               </table>
+              </SpoilerGate>
             </div>
           </div>
           {!HOSTED && <AutoDownloadToggle />}

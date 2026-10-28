@@ -1,5 +1,6 @@
 // Home page card (hosted site): turn notifications on for this device and choose which ones.
 import { useEffect, useState } from 'react';
+import { useSpoilers } from '../spoilers';
 import { currentSubscription, disablePush, enablePush, isAppleMobile, isStandalone, localTest, pushSupported, savedPrefs, type PushPrefs } from '../push';
 
 export function NotificationsCard() {
@@ -11,6 +12,14 @@ export function NotificationsCard() {
   useEffect(() => {
     currentSubscription().then((s) => setOn(!!s), () => setOn(false));
   }, []);
+  // Spoiler-free mode applies to notifications too (no results, no "who's leading").
+  const spoiler = useSpoilers();
+  useEffect(() => {
+    if (!on || !!prefs.spoilerFree === spoiler.on) return;
+    const next = { ...prefs, spoilerFree: spoiler.on };
+    setPrefs(next);
+    void enablePush(next).catch(() => undefined);
+  }, [on, spoiler.on]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const run = async (f: () => Promise<void>, done?: string) => {
     setBusy(true);
@@ -25,7 +34,7 @@ export function NotificationsCard() {
     }
   };
   const change = (p: Partial<PushPrefs>) => {
-    const next = { ...prefs, ...p };
+    const next = { ...prefs, ...p, spoilerFree: spoiler.on };
     setPrefs(next);
     if (on) void run(() => enablePush(next), 'Saved.');
   };
@@ -58,12 +67,13 @@ export function NotificationsCard() {
             happen
           </label>
           <label>
-            <input type="checkbox" checked={prefs.results} onChange={(e) => change({ results: e.target.checked })} /> Results: the podium, and who's on pole
+            <input type="checkbox" checked={prefs.results && !spoiler.on} disabled={spoiler.on} onChange={(e) => change({ results: e.target.checked })} /> Results: the
+            podium, and who's on pole{spoiler.on && <span className="dim"> (off while spoiler-free is on; alerts won't say who's leading either)</span>}
           </label>
         </div>
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 10 }}>
           {!on ? (
-            <button className="btn primary" disabled={busy || on === null} onClick={() => run(async () => (await enablePush(prefs), setOn(true)), 'Notifications are on for this device.')}>
+            <button className="btn primary" disabled={busy || on === null} onClick={() => run(async () => (await enablePush({ ...prefs, spoilerFree: spoiler.on }), setOn(true)), 'Notifications are on for this device.')}>
               Turn on for this device
             </button>
           ) : (

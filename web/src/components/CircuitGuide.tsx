@@ -1,5 +1,6 @@
 // Circuit guide: the layout with numbered corners, the elevation over a lap, key numbers,
 // and who has won here.
+import { finishedRaces, SpoilerGate } from './Spoilers';
 import { circuitOvertakes, difficulty, type RaceOvertakes } from '../data/overtaking';
 import { useEffect, useMemo, useState } from 'react';
 import { circuitHistory, elevation, layout, meetingFor, neutralisations, type CircuitHistory, type Elevation, type Layout, type NeutralRace } from '../data/circuit';
@@ -18,7 +19,11 @@ export function CircuitGuidePage() {
   return (
     <DocShell active="circuit">
       <Loading h={h} error={error} what={`the ${year} calendar`} />
-      {h && <CircuitBody h={h} />}
+      {h && (
+        <SpoilerGate races={finishedRaces(h).filter((r) => r.id === `${h.year}-${param('round')}`)} what="This race's guide">
+          <CircuitBody h={h} />
+        </SpoilerGate>
+      )}
     </DocShell>
   );
 }

@@ -74,6 +74,8 @@ export interface Prefs {
   incidents: boolean;
   /** Podium after races and sprints, pole after qualifying. */
   results: boolean;
+  /** Spoiler-free mode: no results, and alerts don't say who's leading. */
+  spoilerFree?: boolean;
 }
 type Kind = 'reminder-main' | 'reminder-all' | 'incident' | 'result' | 'test';
 interface Message {
@@ -84,6 +86,8 @@ interface Message {
   /** Replaces an earlier notification with the same tag. */
   tag: string;
   kind: Kind;
+  /** The body without anything that gives the order away, for spoiler-free devices. */
+  spoilerFree?: string;
 }
 
 async function vapid() {
@@ -115,9 +119,12 @@ async function send(id: string, msg: Message) {
   const rooms = ((await db('GET', 'rooms')) ?? {}) as Record<string, { push?: Record<string, { sub: webpush.PushSubscription; prefs: Prefs }> }>;
   for (const [uid, room] of Object.entries(rooms)) {
     for (const [devId, dev] of Object.entries(room.push ?? {})) {
-      if (!dev?.sub?.endpoint || !wants(dev.prefs ?? { reminders: 'main', incidents: true, results: true }, msg.kind)) continue;
+      const prefs = dev?.prefs ?? { reminders: 'main', incidents: true, results: true };
+      if (!dev?.sub?.endpoint || !wants(prefs, msg.kind) || (prefs.spoilerFree && msg.kind === 'result')) continue;
+      const { spoilerFree, ...payload } = msg;
+      if (prefs.spoilerFree && spoilerFree != null) payload.body = spoilerFree;
       try {
-        await webpush.sendNotification(dev.sub, JSON.stringify(msg), { TTL: msg.kind.startsWith('reminder') ? 1800 : 900, urgency: 'high' });
+        await webpush.sendNotification(dev.sub, JSON.stringify(payload), { TTL: msg.kind.startsWith('reminder') ? 1800 : 900, urgency: 'high' });
       } catch (err) {
         const code = (err as { statusCode?: number }).statusCode;
         if (code === 404 || code === 410) {
@@ -265,13 +272,15 @@ class Watcher extends F1Feed {
       const m = msgs[this.seenRcm];
       const text = String(m.Message ?? '');
       const id = `${this.state.SessionInfo?.Key ?? this.session.id}-${m.Utc}-${text.slice(0, 40)}`;
-      const say = (title: string, body: string) => send(id, { title: `${title} · ${this.title}`, body, url: '/', tag: `live-${this.session.id}`, kind: 'incident' });
+      // `extra` (who's leading) is left out for devices in spoiler-free mode.
+      const say = (title: string, body: string, extra = '') =>
+        send(id, { title: `${title} · ${this.title}`, body: body + extra, spoilerFree: body, url: '/', tag: `live-${this.session.id}`, kind: 'incident' });
       const lap = this.lapText();
-      if (/VIRTUAL SAFETY CAR DEPLOYED/.test(text)) await say('Virtual Safety Car', `VSC deployed${lap ? ` on ${lap}` : ''}.${isRace ? this.leaderText() : ''}`);
+      if (/VIRTUAL SAFETY CAR DEPLOYED/.test(text)) await say('Virtual Safety Car', `VSC deployed${lap ? ` on ${lap}` : ''}.`, isRace ? this.leaderText() : '');
       else if (/VIRTUAL SAFETY CAR ENDING/.test(text)) await say('VSC ending', 'Racing resumes shortly.');
-      else if (/SAFETY CAR DEPLOYED/.test(text)) await say('Safety Car', `Safety Car deployed${lap ? ` on ${lap}` : ''}.${isRace ? this.leaderText() : ''}`);
-      else if (/SAFETY CAR IN THIS LAP/.test(text)) await say('Restart coming', `The Safety Car comes in at the end of this lap.${this.leaderText()}`);
-      else if (m.Flag === 'RED') await say('Red flag', `The session is stopped${lap ? ` on ${lap}` : ''}.${isRace ? this.leaderText() : ''}`);
+      else if (/SAFETY CAR DEPLOYED/.test(text)) await say('Safety Car', `Safety Car deployed${lap ? ` on ${lap}` : ''}.`, isRace ? this.leaderText() : '');
+      else if (/SAFETY CAR IN THIS LAP/.test(text)) await say('Restart coming', 'The Safety Car comes in at the end of this lap.', this.leaderText());
+      else if (m.Flag === 'RED') await say('Red flag', `The session is stopped${lap ? ` on ${lap}` : ''}.`, isRace ? this.leaderText() : '');
       else if (/RESUME|WILL RESTART AT/.test(text) && m.Category !== 'SafetyCar') await say('Restart', `${text.charAt(0) + text.slice(1).toLowerCase()}${/ AT \d/.test(text) ? ' (local time at the track)' : ''}`);
     }
     const status = this.state.SessionStatus?.Status;

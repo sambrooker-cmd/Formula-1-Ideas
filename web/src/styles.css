@@ -2857,3 +2857,5 @@ a {
 .era-index { display: grid; grid-template-columns: 1fr auto 1fr; gap: 12px; margin: 8px 0 12px; text-align: center; }
 .era-index > div:first-child { text-align: left; }
 .era-num { display: block; font-size: 40px; font-weight: 800; line-height: 1; font-variant-numeric: tabular-nums; }
+.spoiler-cover { align-self: flex-start; height: auto; display: flex; flex-direction: column; gap: 12px; align-items: center; text-align: center; padding: 40px 20px; border: 1px dashed var(--line-2); border-radius: 12px; color: var(--muted); max-width: 640px; margin: 20px auto; }
+.spoiler-cover b { color: var(--text); }
