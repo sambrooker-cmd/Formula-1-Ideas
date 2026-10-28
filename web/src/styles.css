@@ -2452,3 +2452,102 @@ a {
 .deg-card .strong {
   font-weight: 700;
 }
+
+/* ---------- timing strip / mini window ---------- */
+.pip-body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font: 13px/1.4 var(--sans);
+  height: 100vh;
+}
+.strip {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg);
+  /* Scale the text with the window: readable from the sofa on a TV, compact in a small window. */
+  font-size: clamp(12px, min(4.2vh, 6vw), 34px);
+}
+.strip-head {
+  display: flex;
+  justify-content: space-between;
+  padding: 0.25em 0.5em;
+  font-weight: 800;
+  font-size: 0.75em;
+  letter-spacing: 0.06em;
+  background: #1a2230;
+}
+.strip-head.st-SC,
+.strip-head.st-SC_ENDING,
+.strip-head.st-VSC,
+.strip-head.st-VSC_ENDING {
+  background: var(--sc);
+  color: #000;
+}
+.strip-head.st-RED {
+  background: var(--red);
+}
+.strip-head.st-YELLOW {
+  background: #3b3412;
+}
+.strip-list {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-evenly;
+  min-height: 0;
+}
+.strip-item {
+  display: grid;
+  grid-template-columns: 1.6em 0.22em 2.6em 1.1em 1fr;
+  gap: 0.35em;
+  align-items: center;
+  padding: 0 0.5em;
+  line-height: 1.05;
+}
+.strip-item i {
+  height: 0.9em;
+  border-radius: 2px;
+}
+.strip-item.out {
+  opacity: 0.4;
+}
+.strip-pos {
+  color: var(--muted);
+  text-align: right;
+}
+.strip-gap {
+  text-align: right;
+  color: var(--muted);
+}
+.strip-tyre {
+  font-size: 0.7em;
+  font-weight: 800;
+  text-align: center;
+}
+.strip.row {
+  font-size: clamp(12px, 40vh, 28px);
+}
+.strip.row .strip-list {
+  flex-direction: row;
+  overflow-x: auto;
+  justify-content: flex-start;
+  align-items: center;
+  gap: 0.2em;
+}
+.strip.row .strip-item {
+  grid-template-columns: auto 0.22em auto auto auto;
+  flex: none;
+}
+.strip.row {
+  flex-direction: row;
+  align-items: stretch;
+}
+.strip.row .strip-head {
+  flex-direction: column;
+  justify-content: center;
+  font-size: 0.55em;
+  padding: 0 0.6em;
+  flex: none;
+}

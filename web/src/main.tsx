@@ -28,6 +28,7 @@ import { Corners } from './components/Corners';
 import { CleanAirPace, TyreDeg } from './components/RacePace';
 import { StrategySim } from './components/StrategySim';
 import { Battles } from './components/Battles';
+import { openMiniWindow, Strip } from './components/Strip';
 
 // three.js is big: only load it when the 3D page is opened.
 const Replay3D = lazy(() => import('./three/Replay3D'));
@@ -138,6 +139,11 @@ function TopBar({ data }: { data?: SessionData }) {
         </span>
       )}
       <span style={{ flex: 1 }} />
+      {data && (
+        <button className="icon-btn" onClick={() => openMiniWindow(data)} title="Positions and gaps in a small window that stays on top of other apps">
+          ▣ Mini window
+        </button>
+      )}
       {data && location.pathname !== '/analysis' && (
         <a className="icon-btn" href="/analysis" target="_blank" rel="noopener" style={{ textDecoration: 'none' }} title="Ghost laps, corners, tyre wear, pace, strategy simulator and battles">
           📈 Analysis
@@ -290,6 +296,12 @@ function App() {
             </>
           )}
         </WithSession>
+      </div>
+    );
+  if (path === '/strip')
+    return (
+      <div className="page">
+        <WithSession>{(data) => <Strip data={data} row={new URLSearchParams(location.search).get('layout') === 'row'} />}</WithSession>
       </div>
     );
   if (path === '/analysis') return <FullPage>{(data) => <AnalysisPage data={data} />}</FullPage>;
