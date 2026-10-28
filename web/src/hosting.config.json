@@ -1,4 +1,14 @@
 {
-  "firebase": null,
-  "allowedEmails": []
+  "firebase": {
+    "apiKey": "AIzaSyCBBVXdL4-VVz5c_mIglmEPcKiYXVrVCA0",
+    "authDomain": "formula-1-pit-wall.firebaseapp.com",
+    "databaseURL": "https://formula-1-pit-wall-default-rtdb.europe-west1.firebasedatabase.app",
+    "projectId": "formula-1-pit-wall",
+    "storageBucket": "formula-1-pit-wall.firebasestorage.app",
+    "messagingSenderId": "129212513419",
+    "appId": "1:129212513419:web:b1930fbe5e02e8a051288e"
+  },
+  "allowedEmails": [
+    "sam.brooker@ambassadorcruiseline.com"
+  ]
 }

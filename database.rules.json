@@ -2,8 +2,8 @@
   "rules": {
     "rooms": {
       "$uid": {
-        ".read": "auth != null && auth.uid === $uid && auth.token.email_verified === true && false",
-        ".write": "auth != null && auth.uid === $uid && auth.token.email_verified === true && false"
+        ".read": "auth != null && auth.uid === $uid && auth.token.email_verified === true && (auth.token.email === 'sam.brooker@ambassadorcruiseline.com')",
+        ".write": "auth != null && auth.uid === $uid && auth.token.email_verified === true && (auth.token.email === 'sam.brooker@ambassadorcruiseline.com')"
       }
     }
   }
