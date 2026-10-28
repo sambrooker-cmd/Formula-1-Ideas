@@ -1558,3 +1558,72 @@ a {
     height: auto;
   }
 }
+
+/* ---------- long runs ---------- */
+.longruns {
+  display: grid;
+  grid-template-columns: minmax(0, 1.1fr) minmax(260px, 1fr);
+  gap: 10px;
+  padding: 6px 10px;
+}
+@media (max-width: 900px) {
+  .longruns {
+    grid-template-columns: 1fr;
+  }
+}
+.lr-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+}
+.lr-table th {
+  text-align: left;
+  font-size: 10px;
+  color: var(--dim);
+  font-weight: 600;
+  padding: 3px 5px;
+  border-bottom: 1px solid var(--line);
+}
+.lr-table td {
+  padding: 4px 5px;
+  border-bottom: 1px solid #ffffff08;
+  white-space: nowrap;
+}
+.lr-table tr {
+  cursor: pointer;
+}
+.lr-table tbody tr:hover {
+  background: #ffffff08;
+}
+.lr-table tr.on {
+  background: #ffffff0d;
+}
+.lr-table .good {
+  color: var(--green);
+}
+.lr-table .bad {
+  color: var(--red);
+}
+.team-bar {
+  display: inline-block;
+  width: 3px;
+  height: 12px;
+  border-radius: 2px;
+  margin-right: 6px;
+  vertical-align: -1px;
+}
+.lr-chart {
+  min-height: 220px;
+}
+.lr-teams {
+  margin-top: 10px;
+  font-size: 12px;
+}
+.lr-team {
+  display: flex;
+  align-items: center;
+  padding: 2px 0;
+}
+.lr-team .grow {
+  flex: 1;
+}

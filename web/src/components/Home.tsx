@@ -17,6 +17,7 @@ interface Cached {
   date_start: number;
   complete: boolean;
   size_mb: number;
+  lite?: boolean;
 }
 
 interface Job {
@@ -105,9 +106,16 @@ export function Home() {
                   {sessionKey === s.session_key && ' · currently loaded'}
                 </div>
               </div>
-              <button className="btn primary" disabled={!s.complete} onClick={() => open(s.session_key)}>
-                Open pit wall
-              </button>
+              {/Practice/.test(s.session_name) && (
+                <button className="btn" disabled={!s.complete} onClick={() => open(s.session_key, '/long-runs')}>
+                  Long runs
+                </button>
+              )}
+              {!s.lite && (
+                <button className="btn primary" disabled={!s.complete} onClick={() => open(s.session_key)}>
+                  Open pit wall
+                </button>
+              )}
             </div>
           ))}
         </div>

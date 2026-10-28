@@ -89,11 +89,11 @@ function endLabels(codes: string[], colours: string[]): uPlot.Plugin {
   };
 }
 
-function SpoilerToggle({ value, onChange }: { value: boolean; onChange: (v: boolean) => void }) {
+export function SpoilerToggle({ value, onChange, label = 'Whole race' }: { value: boolean; onChange: (v: boolean) => void; label?: string }) {
   return (
     <span className="seg">
       <button className={!value ? 'on' : ''} onClick={() => onChange(false)} title="Only laps completed at this point in the replay">So far</button>
-      <button className={value ? 'on' : ''} onClick={() => onChange(true)} title="The whole session (may spoil the replay)">Whole race</button>
+      <button className={value ? 'on' : ''} onClick={() => onChange(true)} title="The whole session (may spoil the replay)">{label}</button>
     </span>
   );
 }

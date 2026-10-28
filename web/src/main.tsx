@@ -21,6 +21,7 @@ import { DriverDash } from './components/DriverDash';
 import { TvMode } from './components/TvMode';
 import { SignInGate } from './components/SignInGate';
 import { RaceReport } from './components/RaceReport';
+import { LongRuns } from './components/LongRuns';
 
 type PanelComponent = ComponentType<{ data: SessionData; area?: string }>;
 
@@ -37,6 +38,7 @@ const SINGLE: Record<string, PanelComponent> = {
   '/positions': PositionChart,
   '/tyre-wear': TyreWear,
   '/championship': Championship,
+  '/long-runs': LongRuns,
 };
 
 /** Pit wall bottom-right: tyre strategy or the live championship. */
@@ -64,6 +66,7 @@ function AnalysisTabs({ data }: { data: SessionData }) {
         { id: 'trace', label: 'Race trace', render: (lead) => <RaceTrace data={data} area="tele" lead={lead} /> },
         { id: 'positions', label: 'Positions', render: (lead) => <PositionChart data={data} area="tele" lead={lead} /> },
         { id: 'wear', label: 'Tyre wear', render: (lead) => <TyreWear data={data} area="tele" lead={lead} /> },
+        { id: 'longruns', label: data.meta.session.type === 'Race' ? 'Stint pace' : 'Long runs', render: (lead) => <LongRuns data={data} area="tele" lead={lead} /> },
       ]}
     />
   );

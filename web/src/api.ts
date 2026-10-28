@@ -13,6 +13,8 @@ export interface CachedSession {
   date_start: number;
   complete: boolean;
   size_mb: number;
+  /** Hosted practice sessions: lap data only (long runs), no car positions or telemetry. */
+  lite?: boolean;
 }
 
 async function getJson<T>(url: string): Promise<T> {

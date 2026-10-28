@@ -14,7 +14,8 @@ import { parseArgs } from 'node:util';
 import { get } from './openf1.ts';
 import { ingestSession } from './ingest.ts';
 import { listCachedSessions, sessionDbPath } from './db.ts';
-import { ensurePack } from './pack.ts';
+import zlib from 'node:zlib';
+import { encodeSamples, ensurePack } from './pack.ts';
 
 const { values } = parseArgs({
   options: {
@@ -30,8 +31,13 @@ const { values } = parseArgs({
 const OUT = path.resolve(values.out!);
 const FILES = path.join(OUT, 's');
 const LIST = path.join(OUT, 'sessions.json');
-/** Session types worth replaying. Practice sessions are left out to keep the site small. */
+/** Session types worth replaying. */
 const WANTED = ['Race', 'Qualifying', 'Sprint', 'Sprint Qualifying', 'Sprint Shootout'];
+/**
+ * Practice is published "lite": lap data for the long-run analysis, without the car samples
+ * (positions and telemetry), which would triple the site's size and Firebase's free download quota.
+ */
+const LITE = ['Practice 1', 'Practice 2', 'Practice 3'];
 /** Wait this long after a session ends: OpenF1's free tier is closed while sessions are live. */
 const SETTLE_MS = 2 * 3600e3;
 
@@ -45,6 +51,7 @@ interface Entry {
   date_start: number;
   complete: true;
   size_mb: number;
+  lite?: boolean;
 }
 
 const files = (key: number) => ({ meta: path.join(FILES, `${key}.meta.json.gz`), samples: path.join(FILES, `${key}.samples.bin.gz`) });
@@ -100,7 +107,7 @@ async function wantedSessions(): Promise<Record<string, any>[]> {
   const since = values.season ? -Infinity : Date.now() - Number(values['recent-days']) * 86_400e3;
   return all.filter((s) => {
     const end = Date.parse(s.date_end);
-    return WANTED.includes(s.session_name) && !s.is_cancelled && end + SETTLE_MS < Date.now() && end > since;
+    return [...WANTED, ...LITE].includes(s.session_name) && !s.is_cancelled && end + SETTLE_MS < Date.now() && end > since;
   });
 }
 
@@ -126,7 +133,9 @@ for (const s of todo) {
     if (!pack) throw new Error('replay files could not be built');
     const out = files(s.session_key);
     fs.copyFileSync(pack.meta, out.meta);
-    fs.copyFileSync(pack.samples, out.samples);
+    const lite = LITE.includes(s.session_name);
+    if (lite) fs.writeFileSync(out.samples, zlib.gzipSync(encodeSamples([])));
+    else fs.copyFileSync(pack.samples, out.samples);
     const summary = listCachedSessions().find((x) => x.session_key === s.session_key)!;
     const size = (fs.statSync(out.meta).size + fs.statSync(out.samples).size) / 1e6;
     list = list.filter((e) => e.session_key !== s.session_key);
@@ -140,6 +149,7 @@ for (const s of todo) {
       date_start: summary.date_start,
       complete: true,
       size_mb: +size.toFixed(1),
+      ...(lite ? { lite: true } : {}),
     });
     // On GitHub the working database isn't needed once the replay files are made.
     if (process.env.CI) for (const f of [sessionDbPath(s.session_key), sessionDbPath(s.session_key) + '-wal', sessionDbPath(s.session_key) + '-shm']) fs.rmSync(f, { force: true });

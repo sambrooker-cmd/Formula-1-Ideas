@@ -13,6 +13,7 @@ export const PANEL_ROUTES = [
   { path: '/positions', title: 'Positions' },
   { path: '/tyre-wear', title: 'Tyre wear' },
   { path: '/championship', title: 'Championship' },
+  { path: '/long-runs', title: 'Long runs / stint pace' },
   { path: '/wall', title: 'Full pit wall' },
   { path: '/companion', title: 'TV companion' },
   { path: '/driver', title: 'Driver dashboard' },

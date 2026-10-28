@@ -165,7 +165,8 @@ export function index(meta: PackMeta, buf: ArrayBuffer): SessionData {
   const drivers = new Map(meta.drivers.map((d) => [d.number, d]));
   const samples = new Map<number, DriverSamples>();
   for (const d of meta.drivers) {
-    const g = (k: string) => arrays.get(`${k}`);
+    // Lite packs (practice on the hosted site) carry lap data only, no car samples.
+    const g = (k: string) => arrays.get(`${k}`) ?? new Int32Array(0);
     const carT: Num = g(`car.${d.number}.t`);
     const speed: Num = g(`car.${d.number}.speed`);
     const dist = new Float64Array(carT.length);
