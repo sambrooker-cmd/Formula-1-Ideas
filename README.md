@@ -200,7 +200,7 @@ The config identifies the project and isn't secret. Only the listed Google accou
 - **Secrets** → New repository secret: `FIREBASE_SERVICE_ACCOUNT`, with the whole contents of that JSON file. Then delete the file.
 - **Variables** → New repository variable: `FIREBASE_PROJECT_ID`, with your project ID (e.g. `pit-wall-1a2b3`).
 
-**5. First publish.** On GitHub, go to Actions → **Publish Pit Wall** → Run workflow. To fill the site with this season so far, type the year (e.g. `2026`) in the season box; that takes up to an hour. After that it runs by itself every 4 hours and on every change to `main`.
+**5. First publish.** On GitHub, go to Actions → **Publish Pit Wall** → Run workflow (leave the boxes empty). It adds the last 3 race weekends (races, qualifying, sprints, and practice as lap data only), which takes about 40 minutes. After that it runs by itself every 4 hours and on every change to `main`, adding each new session about 2 hours after it finishes. To add a whole season, type the year (e.g. `2025`) in the season box: each run works for up to 80 minutes and publishes what it has, so a full season takes a few runs.
 
 Your site is then at `https://<project-id>.web.app`. On iPhone/iPad, use Share → Add to Home Screen.
 
