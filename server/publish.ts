@@ -26,6 +26,7 @@ const { values } = parseArgs({
     'session-key': { type: 'string', multiple: true },
     site: { type: 'string' },
     max: { type: 'string', default: '12' },
+    'budget-minutes': { type: 'string' },
   },
 });
 
@@ -129,11 +130,24 @@ if (values.site) {
 // Drop list entries whose files have gone missing.
 list = list.filter((e) => published(e.session_key));
 
-const todo = (await wantedSessions()).filter((s) => !published(s.session_key) || outdated(s.session_key)).slice(0, Number(values.max));
+// Most important first (races, then qualifying and sprints, practice last), newest first, so a
+// run that hits its time budget has published what matters most.
+const PRIORITY = ['Race', 'Qualifying', 'Sprint', 'Sprint Qualifying', 'Sprint Shootout'];
+const rank = (name: string) => (PRIORITY.includes(name) ? PRIORITY.indexOf(name) : PRIORITY.length);
+const todo = (await wantedSessions())
+  .filter((s) => !published(s.session_key) || outdated(s.session_key))
+  .sort((a, b) => rank(a.session_name) - rank(b.session_name) || Date.parse(b.date_start) - Date.parse(a.date_start))
+  .slice(0, Number(values.max));
+const budgetMs = values['budget-minutes'] ? Number(values['budget-minutes']) * 60_000 : Infinity;
+const startedAt = Date.now();
 console.log(todo.length ? `${todo.length} session(s) to publish` : 'Nothing new to publish');
 
 let changed = false;
-for (const s of todo) {
+for (const [i, s] of todo.entries()) {
+  if (Date.now() - startedAt > budgetMs) {
+    console.log(`Time budget reached: ${todo.length - i} session(s) left for the next run`);
+    break;
+  }
   const label = `${s.year} ${s.location} · ${s.session_name}`;
   try {
     console.log(`Downloading ${label} (session ${s.session_key})…`);
