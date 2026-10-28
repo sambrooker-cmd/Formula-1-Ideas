@@ -48,6 +48,8 @@ export interface PackMeta {
   grid: [number, number][];
   /** Circuit outline in OpenF1 x/y units, in driving order starting at the line. */
   outline: [number, number][];
+  /** Live free mode: car positions are estimated from lap timing, not measured. */
+  positionsEstimated?: boolean;
 }
 
 export interface PackDriver {

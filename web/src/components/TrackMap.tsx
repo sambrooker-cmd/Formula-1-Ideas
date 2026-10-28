@@ -362,6 +362,11 @@ export function TrackMap({ data, area }: { data: SessionData; area?: string }) {
           </span>
         )}
         <StatusPill data={data} t={t} />
+        {data.meta.positionsEstimated && (
+          <span className="tag out" title="Free live mode: positions are worked out from lap timing, so they're approximate">
+            ≈ estimated positions
+          </span>
+        )}
       </div>
       {pitMode && isRace && (
         <div className="pit-box">

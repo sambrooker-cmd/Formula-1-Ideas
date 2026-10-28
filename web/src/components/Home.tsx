@@ -126,8 +126,9 @@ export function Home() {
 }
 
 interface LiveStatus {
-  source: 'none' | 'openf1' | 'simulation';
+  source: 'none' | 'openf1' | 'f1' | 'simulation';
   configured: boolean;
+  freeLive?: boolean;
   connected: boolean;
   error: string | null;
   simulating: { sessionKey: number; label: string } | null;
@@ -387,12 +388,12 @@ function LiveCard({ cached }: { cached: Cached[] }) {
     ? 'Checking…'
     : live.source === 'simulation'
       ? `Simulating ${live.simulating?.label}`
-      : !live.configured
+      : !live.configured && !live.freeLive
         ? 'Not set up'
         : live.connected
           ? live.session
-            ? `Connected · ${live.session.name}`
-            : 'Connected · waiting for the next session'
+            ? `${live.freeLive && !live.configured ? 'Free live timing' : 'Connected'} · ${live.session.name}`
+            : `${live.freeLive && !live.configured ? 'Free live timing' : 'Connected'} · waiting for the next session`
           : 'Connecting…';
 
   return (
@@ -414,8 +415,18 @@ function LiveCard({ cached }: { cached: Cached[] }) {
       {live?.error && <div style={{ color: 'var(--red)', marginTop: 8, fontSize: 12 }}>{live.error}</div>}
       {live && !live.configured && (
         <div className="muted" style={{ marginTop: 10, fontSize: 12 }}>
-          To follow real sessions, copy <code>.env.example</code> to <code>.env</code>, add your OpenF1 sponsor login, and restart{' '}
-          <code>npm run dev</code>.
+          {live.freeLive ? (
+            <>
+              Free mode uses F1's own live timing: the tower, gaps, tyres, pit stops, race control, flags and weather are live. Car
+              positions on the map are <b>estimated</b> from lap timing, and there's no live telemetry. For exact positions, add an OpenF1
+              sponsor login to <code>.env</code> (see <code>.env.example</code>).
+            </>
+          ) : (
+            <>
+              To follow real sessions, copy <code>.env.example</code> to <code>.env</code>, add your OpenF1 sponsor login, and restart{' '}
+              <code>npm run dev</code>.
+            </>
+          )}
         </div>
       )}
       <div className="muted" style={{ marginTop: 10, fontSize: 12 }}>

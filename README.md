@@ -96,9 +96,19 @@ Each session is stored in `cache/session-<key>.sqlite` (about 35 MB per race) pl
 
 ## Live mode (with the TV)
 
-Live mode follows a session as it happens, using OpenF1's paid sponsor tier (€9.90/month). The pit wall is designed to run on a laptop or tablet next to the TV, kept in step with the picture.
+Live mode follows a session as it happens. The pit wall is designed to run on a laptop or tablet next to the TV, kept in step with the picture. There are two ways to get the data.
 
-### Setup (once)
+### Free live mode (no setup)
+
+With no OpenF1 login, the app connects to F1's own public live-timing feed (the one the official live timing page uses) whenever a session is on. You get the timing tower, gaps, tyres, pit stops, sectors, race control, weather and team radio for free.
+
+F1 stopped publishing car positions and telemetry to that feed in 2025, so on the map the cars are **estimated**: each car is placed along the track from its last line crossing and its usual lap time. A "≈ estimated positions" tag shows when this is happening. They're close on a normal lap but drift during incidents, and there's no speed/throttle telemetry.
+
+The track outline comes from a past race at the same circuit. The app fetches it a few days ahead, because OpenF1's free tier closes during live sessions. If you've downloaded a race at that circuit, that's used instead.
+
+### Paid live mode: OpenF1 sponsor tier (€9.90/month)
+
+Real car positions and telemetry. Setup (once):
 
 1. Sponsor OpenF1 at https://openf1.org to get a login.
 2. Copy `.env.example` to `.env` and fill in `OPENF1_USERNAME` and `OPENF1_PASSWORD`. `.env` is git-ignored and your password stays on your computer: the server logs in, and browsers only talk to your server.
@@ -197,6 +207,7 @@ npm start   # builds the frontend and serves everything from http://localhost:87
 - **Team radio** comes from F1's servers and only a selection of clips is published. Coverage is much thinner from 2026.
 - **Live video can't be built in.** In the UK, Sky has the exclusive live rights (to 2034) and F1 TV Pro is blocked, so the video stays on your TV. The TV-delay sync is how the two are kept together.
 - **The real OpenF1 live feed hasn't been tested end to end yet** (it needs a sponsor login during a live session). The simulated feed exercises the same browser and server path.
+- **Free live mode was tested against a captured snapshot of the feed**, not yet during a real session. If F1 changes or blocks the feed, the Live card says so and the rest of the app is unaffected.
 - **FastF1** now needs an F1 TV login, so it isn't used.
 
 ---

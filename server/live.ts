@@ -61,6 +61,10 @@ class LiveStore {
   /** Deltas collected since the last flush to browsers. */
   pending: Record<string, unknown[]> = {};
   lastMessageAt = 0;
+  /** Circuit outline, when the feed knows it (free live mode places cars along it). */
+  outline: [number, number][] = [];
+  /** True when car positions are estimated rather than measured. */
+  positionsEstimated = false;
 
   reset(session: Row, meeting: Row | null) {
     Object.assign(this, new LiveStore());
@@ -228,7 +232,8 @@ class LiveStore {
       overtakes: byT(this.overtakes, 0),
       results: [],
       grid: [],
-      outline: [],
+      outline: this.outline,
+      positionsEstimated: this.positionsEstimated,
     };
   }
 
@@ -245,7 +250,9 @@ export const store = new LiveStore();
 const clients = new Set<WebSocket>();
 
 export const status = {
-  source: 'none' as 'none' | 'openf1' | 'simulation',
+  source: 'none' as 'none' | 'openf1' | 'f1' | 'simulation',
+  /** Free live mode (F1's own timing feed) is running. */
+  freeLive: false,
   configured: !!credentials,
   connected: false,
   error: null as string | null,
@@ -270,7 +277,7 @@ setInterval(() => {
   broadcast({ type: 'delta', key: store.sessionKey, topics });
 }, 250);
 
-function announceSession() {
+export function announceSession() {
   store.pending = {};
   broadcast({ type: 'session', key: store.sessionKey });
 }
@@ -385,7 +392,7 @@ export function stopSimulation() {
   const wasSimulating = status.source === 'simulation';
   simTimer = null;
   status.simulating = null;
-  status.source = mqttClient ? 'openf1' : 'none';
+  status.source = mqttClient ? 'openf1' : status.freeLive ? 'f1' : 'none';
   if (wasSimulating) {
     // Drop the simulated session; a real one (if any) is picked up on its next message.
     Object.assign(store, new LiveStore());

@@ -11,7 +11,10 @@ import zlib from 'node:zlib';
 import { season, standingsBefore } from './season.ts';
 import { enqueueIngest, recentJobs } from './jobs.ts';
 import { autoStatus, readSettings, startAutoDownload, writeSettings } from './autodownload.ts';
-import { addClient, liveMeta, liveSamples, liveState, startLiveFeed, startSimulation, stopSimulation } from './live.ts';
+import { addClient, liveMeta, liveSamples, liveState, startLiveFeed, startSimulation, status, stopSimulation } from './live.ts';
+import { startFreeLiveFeed } from './f1live.ts';
+import { prefetchNextOutline } from './outlines.ts';
+import { credentials } from './env.ts';
 
 const PORT = Number(process.env.PORT ?? 8787);
 const app = Fastify({ logger: { level: 'warn' } });
@@ -169,5 +172,15 @@ if ((process.env.NODE_ENV === 'production' || process.argv.includes('--productio
 
 await app.listen({ port: PORT, host: '0.0.0.0' });
 void startLiveFeed();
+// Without an OpenF1 login, follow sessions through F1's free timing feed instead.
+if (process.env.PITWALL_F1_SNAPSHOT) {
+  // Development: replay a captured F1 timing snapshot as if it were live.
+  const { loadSnapshotForTest } = await import('./f1live.ts');
+  status.freeLive = true;
+  await loadSnapshotForTest(JSON.parse(fs.readFileSync(process.env.PITWALL_F1_SNAPSHOT, 'utf8')));
+} else if (!credentials && process.env.PITWALL_FREE_LIVE !== '0') void startFreeLiveFeed();
+// Fetch the next circuit's outline ahead of the weekend (OpenF1's free tier closes during sessions).
+void prefetchNextOutline();
+setInterval(prefetchNextOutline, 6 * 3600e3);
 startAutoDownload();
 console.log(`Pit wall API listening on http://localhost:${PORT}`);
