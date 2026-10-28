@@ -1,7 +1,7 @@
 // Circuit guide: the layout with numbered corners, the elevation over a lap, key numbers,
 // and who has won here.
 import { useEffect, useMemo, useState } from 'react';
-import { circuitHistory, elevation, layout, meetingFor, type CircuitHistory, type Elevation, type Layout } from '../data/circuit';
+import { circuitHistory, elevation, layout, meetingFor, neutralisations, type CircuitHistory, type Elevation, type Layout, type NeutralRace } from '../data/circuit';
 import type { SeasonHistory } from '../data/history';
 import { listSessions, type CachedSession } from '../api';
 import { clock } from '../sync/clock';
@@ -32,12 +32,14 @@ function CircuitBody({ h }: { h: SeasonHistory }) {
   const [hist, setHist] = useState<CircuitHistory | null>(null);
   const [replays, setReplays] = useState<CachedSession[]>([]);
   const [problem, setProblem] = useState('');
+  const [neutral, setNeutral] = useState<NeutralRace[] | null>(null);
 
   useEffect(() => {
     if (!race) return;
     setMap(undefined);
     setElev(undefined);
     setHist(null);
+    setNeutral(null);
     meetingFor(h.year, race.date)
       .then(async (m) => {
         if (!m) {
@@ -46,6 +48,7 @@ function CircuitBody({ h }: { h: SeasonHistory }) {
           return;
         }
         layout(m.circuit_key, h.year).then(setMap, () => setMap(null));
+        neutralisations(m.circuit_key).then(setNeutral, () => setNeutral(null));
         elevation(m.circuit_key).then(setElev, () => setElev(null));
         const all = await listSessions();
         setReplays(all.filter((s) => s.complete && s.circuit_short_name === m.circuit_short_name));
@@ -121,6 +124,7 @@ function CircuitBody({ h }: { h: SeasonHistory }) {
       )}
 
       <RaceWeather lat={race.lat} lng={race.lng} start={race.start} />
+      {neutral && neutral.length > 0 && <SafetyCarOdds races={neutral} />}
 
       {winner && (
         <section className="doc-section">
@@ -291,8 +295,77 @@ function StartsHere({ circuitId }: { circuitId: string }) {
       <p>
         In the last {past.length} races here, pole led after lap 1 {past.filter((p) => p.poleKept).length} times. Cars moved{' '}
         {(past.reduce((s, p) => s + p.avgChange, 0) / past.length).toFixed(1)} places each on lap 1 on average
-        {past.some((p) => p.lap1Out.length) ? `, and ${past.reduce((s, p) => s + p.lap1Out.length, 0)} cars went out on the first lap` : ''}.
+        {(() => {
+          const out = past.reduce((s, p) => s + p.lap1Out.length, 0);
+          return out ? `, and ${out} car${out === 1 ? '' : 's'} went out on the first lap` : '';
+        })()}
+        .
       </p>
+    </section>
+  );
+}
+
+/** How often this race has been neutralised, and when. */
+function SafetyCarOdds({ races }: { races: NeutralRace[] }) {
+  const withSc = races.filter((r) => r.events.some((e) => e[1] === 'SC')).length;
+  const withVsc = races.filter((r) => r.events.some((e) => e[1] === 'VSC')).length;
+  const withRed = races.filter((r) => r.events.some((e) => e[1] === 'RED')).length;
+  const any = races.filter((r) => r.events.length).length;
+  const total = (k: string) => races.reduce((s, r) => s + r.events.filter((e) => e[1] === k).length, 0);
+  const label = { SC: 'Safety Car', VSC: 'VSC', RED: 'Red flag' } as const;
+  return (
+    <section className="doc-section">
+      <h2>Safety Car odds</h2>
+      <div className="tiles">
+        <div className="tile">
+          <div className="tile-label">Safety Car</div>
+          <div className="tile-value">
+            {withSc}/{races.length}
+          </div>
+          <div className="tile-sub">races ({total('SC')} in all)</div>
+        </div>
+        <div className="tile">
+          <div className="tile-label">Virtual Safety Car</div>
+          <div className="tile-value">
+            {withVsc}/{races.length}
+          </div>
+          <div className="tile-sub">races ({total('VSC')} in all)</div>
+        </div>
+        <div className="tile">
+          <div className="tile-label">Red flag</div>
+          <div className="tile-value">
+            {withRed}/{races.length}
+          </div>
+          <div className="tile-sub">races</div>
+        </div>
+        <div className="tile">
+          <div className="tile-label">Any neutralisation</div>
+          <div className="tile-value">{Math.round((any / races.length) * 100)}%</div>
+          <div className="tile-sub">of races here</div>
+        </div>
+      </div>
+      <table className="lr-table" style={{ maxWidth: 560 }}>
+        <tbody>
+          {races.map((r) => (
+            <tr key={r.year}>
+              <td className="num dim">{r.year}</td>
+              <td>
+                {r.events.length ? (
+                  r.events.map((e, i) => (
+                    <span key={i} className={'sc-chip k-' + e[1]}>
+                      {label[e[1]]}
+                      {e[0] ? ` · lap ${e[0]}` : ''}
+                    </span>
+                  ))
+                ) : (
+                  <span className="dim">clean race</span>
+                )}
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+      <p className="dim" style={{ fontSize: 11 }}>Races here since 2023 (OpenF1's race control messages), so a small sample: treat it as a feel for the track, not a forecast.</p>
     </section>
   );
 }

@@ -22,10 +22,29 @@ async function cached<T>(key: string, ttlMs: number, fetcher: () => Promise<T>):
   return data;
 }
 
+let lastOpenF1 = 0;
+
+/**
+ * Fetch JSON. OpenF1's free tier allows about 3 requests a second: requests to it are spaced out
+ * and retried when it says "too many". A 404 from OpenF1 means "no results" (an empty list).
+ */
 async function json(url: string) {
-  const r = await fetch(url);
-  if (!r.ok) throw new Error(`${r.status} from ${new URL(url).host}`);
-  return r.json();
+  const openf1 = url.startsWith(OPENF1);
+  for (let attempt = 0; ; attempt++) {
+    if (openf1) {
+      const wait = lastOpenF1 + 400 - Date.now();
+      lastOpenF1 = Math.max(Date.now(), lastOpenF1 + 400);
+      if (wait > 0) await new Promise((r) => setTimeout(r, wait));
+    }
+    const r = await fetch(url);
+    if (r.ok) return r.json();
+    if (openf1 && r.status === 404) return [];
+    if (r.status === 429 && attempt < 3) {
+      await new Promise((res) => setTimeout(res, 2000 * (attempt + 1)));
+      continue;
+    }
+    throw new Error(`${r.status} from ${new URL(url).host}`);
+  }
 }
 
 export interface Meeting {
@@ -157,4 +176,34 @@ export async function cornersForSession(meta: { t0: number; session: { year: num
   return l.corners
     .map((c) => ({ number: `${c.number}${c.letter ?? ''}`, x: c.trackPosition.x, y: c.trackPosition.y, length: c.length }))
     .sort((a, b) => a.length - b.length);
+}
+
+export interface NeutralRace {
+  year: number;
+  /** [lap, kind] for each deployment: SC, VSC or RED. */
+  events: [number | null, 'SC' | 'VSC' | 'RED'][];
+}
+
+/** Safety Cars, VSCs and red flags in each race here since 2023 (OpenF1; 2 requests per race, kept a week). */
+export async function neutralisations(circuitKey: number): Promise<NeutralRace[]> {
+  return cached(`neutral.${circuitKey}`, 7 * 86_400e3, async () => {
+    const races = ((await json(`${OPENF1}sessions?circuit_key=${circuitKey}&session_name=Race`)) as any[])
+      .filter((s) => Date.parse(s.date_end) < Date.now() - 3600e3 && !s.is_cancelled)
+      .sort((a, b) => b.year - a.year);
+    const out: NeutralRace[] = [];
+    for (const r of races) {
+      // Failures throw (rather than look like a clean race), so nothing wrong gets saved.
+      const sc = (await json(`${OPENF1}race_control?session_key=${r.session_key}&category=SafetyCar`)) as any[];
+      const red = (await json(`${OPENF1}race_control?session_key=${r.session_key}&flag=RED`)) as any[];
+      const events: NeutralRace['events'] = [];
+      for (const m of Array.isArray(sc) ? sc : []) {
+        if (/VIRTUAL SAFETY CAR DEPLOYED/.test(m.message)) events.push([m.lap_number ?? null, 'VSC']);
+        else if (/^SAFETY CAR DEPLOYED/.test(m.message)) events.push([m.lap_number ?? null, 'SC']);
+      }
+      for (const m of Array.isArray(red) ? red : []) events.push([m.lap_number ?? null, 'RED']);
+      events.sort((a, b) => (a[0] ?? 0) - (b[0] ?? 0));
+      out.push({ year: r.year, events });
+    }
+    return out;
+  });
 }
