@@ -105,3 +105,21 @@ export async function startSync(uid: string) {
     setLinkStatus({ connected, peers });
   });
 }
+
+/** Read a small piece of personal data (e.g. predictions) stored under this account. */
+export async function readUserData<T>(key: string): Promise<T | null> {
+  const { auth, db, dbMod } = await load();
+  const uid = auth.currentUser?.uid;
+  if (!uid) return null;
+  const snap = await dbMod.get(dbMod.ref(db, `rooms/${uid}/data/${key}`));
+  const v = snap.val();
+  return v == null ? null : (JSON.parse(v) as T);
+}
+
+/** Save personal data under this account (stored as one JSON string to keep empty arrays). */
+export async function writeUserData(key: string, value: unknown) {
+  const { auth, db, dbMod } = await load();
+  const uid = auth.currentUser?.uid;
+  if (!uid) return;
+  await dbMod.set(dbMod.ref(db, `rooms/${uid}/data/${key}`), JSON.stringify(value));
+}

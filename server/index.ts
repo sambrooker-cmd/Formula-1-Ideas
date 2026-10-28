@@ -4,7 +4,7 @@ import fastifyWebsocket from '@fastify/websocket';
 import fs from 'node:fs';
 import path from 'node:path';
 import type { WebSocket } from 'ws';
-import { listCachedSessions } from './db.ts';
+import { CACHE_DIR, listCachedSessions } from './db.ts';
 import { ensurePack } from './pack.ts';
 import { get } from './openf1.ts';
 import zlib from 'node:zlib';
@@ -71,6 +71,27 @@ app.post<{ Body: { sessionKey: number } }>('/api/ingest', async (req, reply) => 
 app.get('/api/ingest', async () => recentJobs());
 
 app.get('/api/settings', async () => ({ ...readSettings(), auto: autoStatus }));
+
+// ---- personal data (predictions), shared by every device using this Mac ---------
+
+const USER_DIR = path.join(CACHE_DIR, 'user');
+const userFile = (key: string) => (/^[a-z0-9-]{1,40}$/.test(key) ? path.join(USER_DIR, key + '.json') : null);
+app.get<{ Params: { key: string } }>('/api/user/:key', async (req, reply) => {
+  const f = userFile(req.params.key);
+  if (!f) return reply.code(400).send({ error: 'bad key' });
+  try {
+    return JSON.parse(fs.readFileSync(f, 'utf8'));
+  } catch {
+    return null;
+  }
+});
+app.put<{ Params: { key: string }; Body: unknown }>('/api/user/:key', { bodyLimit: 512 * 1024 }, async (req, reply) => {
+  const f = userFile(req.params.key);
+  if (!f) return reply.code(400).send({ error: 'bad key' });
+  fs.mkdirSync(USER_DIR, { recursive: true });
+  fs.writeFileSync(f, JSON.stringify(req.body));
+  return { ok: true };
+});
 app.post<{ Body: { autoDownload?: boolean } }>('/api/settings', async (req) => {
   const patch = typeof req.body?.autoDownload === 'boolean' ? { autoDownload: req.body.autoDownload } : {};
   return { ...writeSettings(patch), auto: autoStatus };

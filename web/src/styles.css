@@ -2595,3 +2595,65 @@ a {
     max-width: 55vw;
   }
 }
+
+/* ---------- predictions ---------- */
+.podium-pick {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+.podium-pick.compact {
+  gap: 6px;
+}
+.podium-slot {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 6px 10px;
+}
+.podium-pick.compact .podium-slot {
+  padding: 2px 6px;
+}
+.podium-num {
+  font-weight: 800;
+  color: var(--muted);
+}
+.podium-slot i {
+  width: 4px;
+  height: 18px;
+  border-radius: 2px;
+}
+.later {
+  margin-top: 12px;
+}
+.later-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin: 6px 0;
+}
+.later-row > span {
+  min-width: 160px;
+}
+.pick-chip {
+  display: inline-block;
+  font-weight: 700;
+  font-size: 12px;
+  border-radius: 4px;
+  padding: 1px 6px;
+  margin-right: 4px;
+  background: var(--panel-2);
+  color: var(--dim);
+}
+.pick-chip.exact {
+  background: #2fd17a33;
+  color: var(--green);
+}
+.pick-chip.podium {
+  background: #ffb02033;
+  color: var(--sc);
+}
