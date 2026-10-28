@@ -5,6 +5,11 @@
         ".read": "auth != null && auth.uid === $uid && auth.token.email_verified === true && (auth.token.email === 'sam.brooker@ambassadorcruiseline.com')",
         ".write": "auth != null && auth.uid === $uid && auth.token.email_verified === true && (auth.token.email === 'sam.brooker@ambassadorcruiseline.com')"
       }
+    },
+    "notify": {
+      "public": {
+        ".read": "auth != null && auth.token.email_verified === true && (auth.token.email === 'sam.brooker@ambassadorcruiseline.com')"
+      }
     }
   }
 }

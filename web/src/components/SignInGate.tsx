@@ -1,6 +1,7 @@
 import { useEffect, useState, type ReactNode } from 'react';
 import { firebaseEnabled, signIn, signOut, startSync, watchUser, type SignedIn } from '../firebase';
 import { Footer } from './Footer';
+import { registerServiceWorker } from '../push';
 
 /** Hosted build: nothing shows until you've signed in with an allowed Google account. */
 export function SignInGate({ children }: { children: ReactNode }) {
@@ -16,6 +17,7 @@ export function SignInGate({ children }: { children: ReactNode }) {
       if (u?.allowed && !synced) {
         synced = true;
         void startSync(u.uid);
+        registerServiceWorker(); // for notifications
       }
     }).then((off) => (unsubscribe = off), (e) => setError(String(e.message ?? e)));
     return () => unsubscribe?.();

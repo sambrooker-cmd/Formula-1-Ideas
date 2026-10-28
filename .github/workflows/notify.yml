@@ -1,0 +1,67 @@
+# Sends Pit Wall notifications to the devices that have turned them on (see server/notify.ts):
+# session reminders, Safety Car / red flag alerts while a session is on, and results.
+# Uses the same FIREBASE_SERVICE_ACCOUNT secret as the publish workflow; nothing else to set up.
+name: Notifications
+
+on:
+  schedule:
+    # GitHub runs these a few minutes late at busy times; reminders allow for that.
+    - cron: '*/10 * * * *'
+  workflow_dispatch:
+    inputs:
+      test:
+        description: 'Send a test notification to every device now'
+        type: boolean
+        default: true
+
+jobs:
+  reminders:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    outputs:
+      live: ${{ steps.check.outputs.live }}
+    env:
+      HAS_KEY: ${{ secrets.FIREBASE_SERVICE_ACCOUNT != '' }}
+    steps:
+      - name: Check setup
+        id: setup
+        run: echo "ready=$HAS_KEY" >> "$GITHUB_OUTPUT"
+      - uses: actions/checkout@v4
+        if: steps.setup.outputs.ready == 'true'
+      - uses: actions/setup-node@v4
+        if: steps.setup.outputs.ready == 'true'
+        with:
+          node-version: 22
+          cache: npm
+      - name: Install
+        if: steps.setup.outputs.ready == 'true'
+        run: npm ci --no-audit --no-fund
+      - name: Reminders
+        id: check
+        if: steps.setup.outputs.ready == 'true'
+        env:
+          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+          MODE: ${{ github.event_name == 'workflow_dispatch' && inputs.test && 'test' || 'reminders' }}
+        run: npx tsx server/notify.ts "$MODE"
+
+  # While a session is on, one run at a time follows F1 live timing for flags and results.
+  live:
+    needs: reminders
+    if: needs.reminders.outputs.live == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 240
+    concurrency:
+      group: notify-live
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - name: Install
+        run: npm ci --no-audit --no-fund
+      - name: Follow the session
+        env:
+          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+        run: npx tsx server/notify.ts live

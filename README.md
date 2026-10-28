@@ -100,6 +100,17 @@ Each session is stored in `cache/session-<key>.sqlite` (about 35 MB per race) pl
 - **Clean-air pace:** each driver's typical lap when not stuck behind anyone, a like-for-like figure corrected for tyres, and how much traffic cost them.
 - **Strategy sim:** change a driver's pit laps or tyres and see where they'd have finished. The real strategy reproduces the real result exactly; only that car changes, and traffic isn't modelled.
 - **Battles:** every on-track fight (3+ laps within a second), who got through, and one click to watch it with both cars selected. Also a tab next to Key moments.
+- **Start:** grid to the end of lap 1 for every car, and how starts have gone at this circuit in recent years (did pole hold on, first-lap retirements).
+- **Ratings:** a mark out of 10 for every driver's race, with the reasons (result against the car, team-mate, like-for-like pace, places gained, penalties). The best is "Drive of the race" in the report.
+
+### Predictor (a tab next to Key moments, or `/predictor`)
+
+- **Races:** the projected finishing order from the gaps now, the stops each car still has to make (a second tyre compound, or tyres that won't last), and recent pace. Tested on past races it picked the winner more often than the running order did; further down, treat it as a rough guide.
+- **Qualifying:** the knockout line and the time needed to get through, who's in the drop zone, and for cars on a flying lap a projected time from the sectors they've done, with where it would put them.
+
+### Circuit guide extras
+
+The circuit guide also shows **Safety Car odds** (how often there's been a Safety Car, VSC or red flag here, and on which laps) and **starts here** in recent years. **Season stats** has an **upgrade tracker**: each team's qualifying pace against the fastest car, race by race, so you can see who's found speed.
 
 ### Mini window and timing strip
 
@@ -203,6 +214,10 @@ The config identifies the project and isn't secret. Only the listed Google accou
 **5. First publish.** On GitHub, go to Actions → **Publish Pit Wall** → Run workflow (leave the boxes empty). It adds the last 3 race weekends (races, qualifying, sprints, and practice as lap data only), which takes about 40 minutes. After that it runs by itself every 4 hours and on every change to `main`, adding each new session about 2 hours after it finishes. To add a whole season, type the year (e.g. `2025`) in the season box: each run works for up to 80 minutes and publishes what it has, so a full season takes a few runs.
 
 Your site is then at `https://<project-id>.web.app`. On iPhone/iPad, use Share → Add to Home Screen.
+
+**6. Notifications (optional).** A second GitHub job, **Notifications**, runs every 10 minutes and sends reminders before sessions, Safety Car / VSC / red flag alerts while one is on, and the podium or pole when it ends, even when Pit Wall is closed. It uses the same secret, so there's nothing to add; it makes its own signing keys on the first run. Turn them on per device on the home page (**Notifications → Turn on for this device**). On iPad/iPhone they only work in the home-screen app (iOS 16.4 or later), so add it to the home screen first, open it from there and sign in. To check it end to end, go to Actions → **Notifications** → Run workflow, which sends a test to every device that's signed up.
+
+Signing in from the home-screen app needs one extra address allowed in Google: console.cloud.google.com → APIs & Services → **Credentials** → the **Web client (auto created by Google Service)** → *Authorized redirect URIs* → add `https://<project-id>.web.app/__/auth/handler` → Save.
 
 To publish on your own computer instead of GitHub: run `npm run publish:data`, then `npm run build:hosted`, then `npx firebase-tools deploy`.
 

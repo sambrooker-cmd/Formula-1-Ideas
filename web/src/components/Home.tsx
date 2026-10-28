@@ -4,6 +4,7 @@ import { useSynced } from '../hooks';
 import { captureLayout, openLayout, PANEL_ROUTES, PRESETS, savedLayouts, saveLayouts, type Layout } from '../layouts';
 import { Footer } from './Footer';
 import { HOSTED } from '../env';
+import { NotificationsCard } from './Notifications';
 import { hostedLiveStatus, startHostedLive, subscribeHostedLive } from '../live/hostedLive';
 import { listSessions, season as loadSeason } from '../api';
 import { AccountLine } from './SignInGate';
@@ -155,6 +156,8 @@ export function Home() {
       </section>
 
       {!HOSTED ? <LiveCard cached={cached} /> : <HostedLiveCard />}
+
+      {HOSTED && <NotificationsCard />}
 
       {!HOSTED && <IngestCard jobs={jobs} onStarted={(j) => setJobs((prev) => [...prev, j])} />}
 

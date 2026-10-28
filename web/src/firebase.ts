@@ -28,7 +28,11 @@ let services: Promise<{
 function load() {
   services ??= (async () => {
     const [{ initializeApp }, authMod, dbMod] = await Promise.all([import('firebase/app'), import('firebase/auth'), import('firebase/database')]);
-    const app = initializeApp(firebaseConfig!);
+    // A home-screen app signs in by redirect, which Safari only allows from the site's own
+    // domain, so use the hosting domain for sign-in there (it serves the same sign-in pages).
+    const standalone = matchMedia('(display-mode: standalone)').matches || (navigator as { standalone?: boolean }).standalone;
+    const ownDomain = /\.(web\.app|firebaseapp\.com)$/.test(location.hostname) && location.hostname.startsWith(firebaseConfig!.projectId);
+    const app = initializeApp(standalone && ownDomain ? { ...firebaseConfig!, authDomain: location.hostname } : firebaseConfig!);
     return { auth: authMod.getAuth(app), db: dbMod.getDatabase(app), authMod, dbMod };
   })();
   return services;
@@ -123,4 +127,26 @@ export async function writeUserData(key: string, value: unknown) {
   const uid = auth.currentUser?.uid;
   if (!uid) return;
   await dbMod.set(dbMod.ref(db, `rooms/${uid}/data/${key}`), JSON.stringify(value));
+}
+
+// ---- notifications (web push; sent by the GitHub Action in server/notify.ts) ----
+
+/** The public key pushes are signed with (made by the Action on its first run). */
+export async function pushPublicKey(): Promise<string | null> {
+  const { db, dbMod } = await load();
+  return (await dbMod.get(dbMod.ref(db, 'notify/public/vapidKey'))).val();
+}
+
+/** Save (or update) this device's push subscription and what it wants to hear about. */
+export async function savePushDevice(id: string, device: unknown) {
+  const { auth, db, dbMod } = await load();
+  const uid = auth.currentUser?.uid;
+  if (!uid) throw new Error('Sign in first.');
+  await dbMod.set(dbMod.ref(db, `rooms/${uid}/push/${id}`), device);
+}
+
+export async function removePushDevice(id: string) {
+  const { auth, db, dbMod } = await load();
+  const uid = auth.currentUser?.uid;
+  if (uid) await dbMod.remove(dbMod.ref(db, `rooms/${uid}/push/${id}`));
 }
