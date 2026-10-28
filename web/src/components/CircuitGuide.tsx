@@ -8,6 +8,7 @@ import { clock } from '../sync/clock';
 import { useElementSize } from '../hooks';
 import { DocShell, go, links, Loading, ordinal, param, teamColour, thisYear, Tile, useHistory, YearSelect } from './Explore';
 import { LineChart } from './LineChart';
+import { RaceWeather } from './Weather';
 
 export function CircuitGuidePage() {
   const year = Number(param('year')) || thisYear();
@@ -111,12 +112,14 @@ function CircuitBody({ h }: { h: SeasonHistory }) {
             xLabels={sample(elev.points, 160).map((p) => `${(p[0] / 1000).toFixed(1)} km`)}
             xEvery={20}
             height={170}
-            yFormat={(v) => `${v.toFixed(0)} m`}
+            yFormat={(v) => `${v.toFixed(Math.max(...elev.points.map((p) => p[1])) < 10 ? 1 : 0)} m`}
             yMin={0}
           />
           <p className="dim" style={{ fontSize: 11 }}>From car #{elev.driver}'s fastest lap in the {elev.year} race. Heights come from the cars' positioning data, so treat them as approximate.</p>
         </section>
       )}
+
+      <RaceWeather lat={race.lat} lng={race.lng} start={race.start} />
 
       {winner && (
         <section className="doc-section">

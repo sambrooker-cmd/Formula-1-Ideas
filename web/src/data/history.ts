@@ -22,6 +22,8 @@ export interface HRace {
   circuit: string;
   locality: string;
   country: string;
+  lat: number;
+  lng: number;
   sprint: boolean;
 }
 
@@ -51,7 +53,7 @@ export interface SeasonHistory {
   quali: HQuali[];
 }
 
-const STORE_VERSION = 1;
+const STORE_VERSION = 2;
 const key = (year: number) => `pitwall.history.v${STORE_VERSION}.${year}`;
 const memory = new Map<number, Promise<SeasonHistory>>();
 
@@ -155,6 +157,8 @@ async function fetchSeason(year: number): Promise<SeasonHistory> {
       circuit: r.Circuit.circuitName,
       locality: r.Circuit.Location.locality,
       country: r.Circuit.Location.country,
+      lat: Number(r.Circuit.Location.lat),
+      lng: Number(r.Circuit.Location.long),
       sprint: !!r.Sprint,
     })),
     drivers,

@@ -232,6 +232,9 @@ function SeasonCard({ jobs, onOpen, onDownload }: { jobs: Job[]; onOpen: (key: n
                 <div className="muted">
                   {next.circuit}, {next.locality} · lights out {fmtWhen(next.start)}
                 </div>
+                <a className="plain-link muted" style={{ fontSize: 12 }} href={`/circuit?year=${year}&round=${next.round}`}>
+                  Circuit guide, weather and rain radar →
+                </a>
               </div>
               <div className="next-count num">{countdown(Date.parse(next.start) - now)}</div>
             </div>

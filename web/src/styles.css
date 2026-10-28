@@ -2219,3 +2219,53 @@ a {
     display: none;
   }
 }
+
+/* ---------- weather radar ---------- */
+.radar-view {
+  position: relative;
+  width: 100%;
+  max-width: 560px;
+  aspect-ratio: 1;
+  overflow: hidden;
+  border-radius: 8px;
+  border: 1px solid var(--line);
+  background: #0c0f14;
+}
+.radar-tiles {
+  position: absolute;
+  left: calc(50% - 640px);
+  top: calc(50% - 640px);
+  width: 1280px;
+  height: 1280px;
+}
+.radar-tiles img {
+  position: absolute;
+  width: 256px;
+  height: 256px;
+}
+.radar-frame {
+  position: absolute;
+  inset: 0;
+}
+.radar-pin {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 14px;
+  height: 14px;
+  margin: -7px 0 0 -7px;
+  border-radius: 50%;
+  background: var(--accent);
+  border: 2px solid #fff;
+  box-shadow: 0 0 0 4px #ff4d2e44;
+}
+.radar-bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  max-width: 560px;
+  margin-top: 6px;
+}
+.radar-bar input {
+  flex: 1;
+}
