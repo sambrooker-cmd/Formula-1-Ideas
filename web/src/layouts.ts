@@ -28,6 +28,7 @@ export const PANEL_ROUTES = [
   { path: '/battles', title: 'Battles' },
   { path: '/starts', title: 'The start' },
   { path: '/ratings', title: 'Driver ratings' },
+  { path: '/predictor', title: 'Predictor' },
   { path: '/strip', title: 'Timing strip (small window / TV)' },
   { path: '/strip?layout=row', title: 'Timing ticker (one line)' },
   { path: '/tv', title: 'TV mode' },

@@ -101,10 +101,13 @@ export function qualiAt(data: SessionData, t: number): QualiState {
     const laps = data.laps.get(n) ?? [];
     const lapsIn = laps.filter((l) => phaseOf(l) === shown && l.t <= t);
     const lastDone = [...laps].reverse().find((l) => l.duration != null && l.end <= t) ?? null;
-    const now = laps.find((l) => l.t <= t && t < l.end);
+    // The latest lap begun (OpenF1's out-laps can overlap the lap after them).
+    const now = [...laps].reverse().find((l) => l.t <= t && t < l.end);
     const pits = data.pits.get(n) ?? [];
     const lastPit = [...pits].reverse().find((p) => p.t <= t);
-    const inPit = !!lastPit && t < lastPit.t + (lastPit.laneDuration ?? 30) * 1000;
+    // In the pits until the lane time is up, or a timed lap starts (the lane time can include the garage).
+    const nextLap = lastPit && laps.find((l) => l.t > lastPit.t && !l.pitOut);
+    const inPit = !!lastPit && t < Math.min(lastPit.t + (lastPit.laneDuration ?? 30) * 1000, nextLap?.t ?? Infinity);
     return {
       driver: n,
       outIn: outIn.get(n) ?? null,

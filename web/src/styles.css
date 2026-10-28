@@ -2808,3 +2808,14 @@ a {
   background: #ff3b4e1a;
   color: #ff9aa5;
 }
+.moment.pred-row {
+  grid-template-columns: 34px minmax(0, 1fr) auto;
+}
+.pred-pos {
+  font-weight: 800;
+  text-align: center;
+}
+.moment-text .bad {
+  color: var(--red);
+}
+.moment.pred-row.danger { background: rgba(225, 6, 0, 0.07); }

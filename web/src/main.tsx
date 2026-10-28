@@ -30,6 +30,7 @@ import { StrategySim } from './components/StrategySim';
 import { Battles } from './components/Battles';
 import { Starts } from './components/Starts';
 import { Ratings } from './components/Ratings';
+import { Predictor } from './components/Predictor';
 import { openMiniWindow, Strip } from './components/Strip';
 
 // three.js is big: only load it when the 3D page is opened.
@@ -65,6 +66,7 @@ const SINGLE: Record<string, PanelComponent> = {
   '/battles': Battles,
   '/starts': Starts,
   '/ratings': Ratings,
+  '/predictor': Predictor,
 };
 
 /** Pit wall bottom-right: tyre strategy or the live championship. */
@@ -128,6 +130,7 @@ function ControlTabs({ data, area = 'rc' }: { data: SessionData; area?: string }
         { id: 'messages', label: 'Messages', render: (lead) => <RaceControl data={data} area={area} lead={lead} /> },
         { id: 'moments', label: 'Moments', render: (lead) => <KeyMoments data={data} area={area} lead={lead} /> },
         { id: 'battles', label: 'Battles', render: (lead) => <Battles data={data} area={area} lead={lead} /> },
+        { id: 'predictor', label: 'Predictor', render: (lead) => <Predictor data={data} area={area} lead={lead} /> },
       ]}
     />
   );

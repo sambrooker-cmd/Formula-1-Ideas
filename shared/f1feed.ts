@@ -63,6 +63,7 @@ interface DriverTrack {
   segments: (number | null)[][];
   inPitSince?: number;
   inPit?: boolean;
+  pitOutLap?: boolean; // the lap now being timed began in the pit lane
   stintsKey?: string;
   realPositions: boolean;
 }
@@ -286,12 +287,23 @@ export class F1Feed {
       }
       // Remember sector times and mini-sectors as they arrive, for when the lap completes.
       const sectors: Obj[] = Array.isArray(line.Sectors) ? line.Sectors : Object.values(line.Sectors ?? {});
+      let newSector = false;
       sectors.forEach((sec, i) => {
         if (!sec || i > 2) return;
-        if (sec.Value) d.sectors[i] = sec.Value;
+        if (sec.Value && sec.Value !== d.sectors[i]) {
+          d.sectors[i] = sec.Value;
+          newSector = true;
+        }
         const segs: Obj[] = Array.isArray(sec.Segments) ? sec.Segments : Object.values(sec.Segments ?? {});
         d.segments[i] = segs.map((g) => g?.Status ?? null);
       });
+      // Sector times on the lap in progress, as they come (the qualifying predictor uses them).
+      if (newSector && d.laps !== undefined && d.lapStart != null)
+        this.store.apply('laps', {
+          driver_number: dn, lap_number: d.laps + 1, date_start: iso(d.lapStart), lap_duration: null,
+          duration_sector_1: lapSeconds(d.sectors[0]), duration_sector_2: lapSeconds(d.sectors[1]), duration_sector_3: lapSeconds(d.sectors[2]),
+          is_pit_out_lap: !!d.pitOutLap,
+        });
       // A new lap: record the one just finished and start timing the next.
       const laps = line.NumberOfLaps;
       if (typeof laps === 'number' && laps !== d.laps) {
@@ -303,13 +315,14 @@ export class F1Feed {
           this.store.apply('laps', {
             driver_number: dn, lap_number: laps, date_start: iso(t - duration * 1000), lap_duration: duration,
             duration_sector_1: lapSeconds(d.sectors[0]), duration_sector_2: lapSeconds(d.sectors[1]), duration_sector_3: lapSeconds(d.sectors[2]),
-            is_pit_out_lap: false, segments_sector_1: d.segments[0], segments_sector_2: d.segments[1], segments_sector_3: d.segments[2],
+            is_pit_out_lap: !!d.pitOutLap, segments_sector_1: d.segments[0], segments_sector_2: d.segments[1], segments_sector_3: d.segments[2],
           });
         } else if (duration) {
           d.lapTimes = [duration];
         }
         if (!first) d.lapStart = t;
-        this.store.apply('laps', { driver_number: dn, lap_number: laps + 1, date_start: iso(t), lap_duration: null, is_pit_out_lap: !!line.PitOut });
+        d.pitOutLap = !!line.PitOut;
+        this.store.apply('laps', { driver_number: dn, lap_number: laps + 1, date_start: iso(t), lap_duration: null, is_pit_out_lap: d.pitOutLap });
         d.sectors = [null, null, null];
       }
       // Pit stops: from entering the pit lane to leaving it.
