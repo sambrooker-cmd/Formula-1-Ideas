@@ -12,14 +12,17 @@ export function loadTranscripts(key: number) {
       key,
       fetch(HOSTED ? `/data/s/${key}.radio.json` : `/api/sessions/${key}/radio`)
         .then((r) => (r.ok ? r.json() : null))
-        .then((j) => (j?.texts as Record<string, string>) ?? null)
+        .then((j) => (j?.texts && Object.keys(j.texts).length ? (j.texts as Record<string, string>) : null))
         .catch(() => null), // the hosted site answers a missing file with its page, which isn't JSON
     );
   return cache.get(key)!;
 }
 
+/** Load again (after transcribing on the Mac). */
+export const forgetTranscripts = (key: number) => cache.delete(key);
+
 /** Clip address → what was said (undefined while loading, null if there are none). */
-export function useTranscripts(data: SessionData) {
+export function useTranscripts(data: SessionData, version = 0) {
   const key = data.meta.session.key;
   const [texts, setTexts] = useState<Record<string, string> | null | undefined>(undefined);
   useEffect(() => {
@@ -29,6 +32,6 @@ export function useTranscripts(data: SessionData) {
     return () => {
       on = false;
     };
-  }, [key, data.live]);
+  }, [key, data.live, version]);
   return texts;
 }

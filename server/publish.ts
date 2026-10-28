@@ -223,11 +223,19 @@ if (await canTranscribe()) {
       // none yet
     }
     if (!urls.length || (have?.model === MODEL && urls.every((u) => u in have!.texts))) {
-      e.radio = !!have || undefined;
+      e.radio = have && Object.keys(have.texts).length ? true : undefined;
       continue;
     }
     console.log(`Transcribing ${urls.length} radio clips: ${e.year} ${e.meeting_name} · ${e.session_name}`);
     const done = await transcribeAll(urls, have, deadline);
+    const got = Object.keys(done.texts).length;
+    console.log(`  ${got} of ${urls.length} clips transcribed`);
+    if (!got) {
+      // The clips couldn't be downloaded from here (F1's server refuses some networks).
+      fs.rmSync(radioFile(e.session_key), { force: true });
+      e.radio = undefined;
+      continue;
+    }
     fs.writeFileSync(radioFile(e.session_key), JSON.stringify(done));
     e.radio = true;
     changed = true;

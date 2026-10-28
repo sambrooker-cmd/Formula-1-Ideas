@@ -108,7 +108,7 @@ Each session is stored in `cache/session-<key>.sqlite` (about 35 MB per race) pl
 ### Watching
 - **Catch up:** in Key moments, **▶ Highlights ▾ → Catch up in 5 / 10 / 20 minutes** plays the race's biggest moments in that time, start to flag.
 - **Commentary** (a tab next to Key moments, or `/commentary`), and 💬 on the track map for a caption line: who's closing on whom, who's in overtaking range, tyre offsets and the lead, worked out from the timing.
-- **Team radio** (a tab next to Key moments, or `/radio`): every clip with what was said, searchable. Transcripts are made by speech recognition when a session is published to the site (expect the odd misheard name); the Mac app fetches them from the site. Race control shows them too.
+- **Team radio** (a tab next to Key moments, or `/radio`): every clip with what was said, searchable, and shown in race control too. In the Mac app, press **Transcribe this session on this Mac** (a few minutes; the first time also downloads about 1 GB of speech recognition). Expect the odd misheard name. The hosted site can't make transcripts: F1's server won't let GitHub download the audio.
 - **🙈 Spoiler-free** (home page and the explore pages): hides results of recent races (the last three weeks) you haven't watched: winners and standings on the home page, season, driver, circuit and prediction pages, analysis of the race, and result notifications (alerts also stop saying who's leading). A race counts as watched when its replay reaches the chequered flag, or tap **I've watched it**. The setting follows you between devices.
 
 ### Predictor (a tab next to Key moments, or `/predictor`)

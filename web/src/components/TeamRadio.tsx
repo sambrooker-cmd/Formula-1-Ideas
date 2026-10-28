@@ -1,8 +1,9 @@
 // Team radio: every clip with what was said (speech recognition, so expect the odd misheard
 // word), searchable, with play and jump-to buttons.
-import { useMemo, useRef, useState, type ReactNode } from 'react';
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import type { SessionData } from '../data/session';
-import { useTranscripts } from '../data/radio';
+import { forgetTranscripts, useTranscripts } from '../data/radio';
+import { HOSTED } from '../env';
 import { formatClock, leaderLap } from '../data/state';
 import { clock } from '../sync/clock';
 import { useNow } from '../hooks';
@@ -10,7 +11,12 @@ import { Panel } from './Panel';
 
 export function TeamRadio({ data, area, lead }: { data: SessionData; area?: string; lead?: ReactNode }) {
   const t = useNow(2);
-  const texts = useTranscripts(data);
+  const [version, setVersion] = useState(0);
+  const texts = useTranscripts(data, version);
+  const job = useRadioJob(data.meta.session.key, () => {
+    forgetTranscripts(data.meta.session.key);
+    setVersion((v) => v + 1);
+  });
   const [query, setQuery] = useState('');
   const [ahead, setAhead] = useState(false);
   const audio = useRef<HTMLAudioElement | null>(null);
@@ -37,10 +43,35 @@ export function TeamRadio({ data, area, lead }: { data: SessionData; area?: stri
           <input type="checkbox" checked={ahead} onChange={(e) => setAhead(e.target.checked)} /> show what's ahead
         </label>
       </div>
-      {texts === null && data.meta.radio.length > 0 && (
-        <div className="dim" style={{ padding: '6px 10px', fontSize: 11 }}>
-          No transcripts for this session yet ({data.live ? 'not during live sessions' : 'they appear once it has been published to the site'}). You can still play the clips.
+      {job.active ? (
+        <div className="dim" style={{ padding: '6px 10px', fontSize: 12 }}>
+          {job.active.stage === 'installing'
+            ? 'Setting up speech recognition on this Mac (a one-off download of about 1 GB; a few minutes)…'
+            : job.active.stage === 'transcribing'
+              ? `Transcribing: ${job.active.done} of ${job.active.total} clips…`
+              : job.active.stage === 'failed'
+                ? `Transcribing failed: ${job.active.error}`
+                : ''}
         </div>
+      ) : (
+        texts === null &&
+        data.meta.radio.length > 0 && (
+          <div className="dim" style={{ padding: '6px 10px', fontSize: 12 }}>
+            {data.live ? (
+              'Transcripts are made after the session. You can still play the clips.'
+            ) : HOSTED ? (
+              'No transcripts for this session. They can be made in the Mac app (F1’s server doesn’t let the site download the audio). You can still play the clips.'
+            ) : (
+              <>
+                No transcripts yet.{' '}
+                <button className="btn small" onClick={job.start}>
+                  Transcribe this session on this Mac
+                </button>{' '}
+                (about {Math.max(1, Math.round((data.meta.radio.length * 4) / 60))} min; the first time also downloads speech recognition, about 1 GB)
+              </>
+            )}
+          </div>
+        )
       )}
       <ul className="moments">
         {clips.map(([n, rt, url]) => (
@@ -60,4 +91,41 @@ export function TeamRadio({ data, area, lead }: { data: SessionData; area?: stri
       {texts && <p className="dim" style={{ fontSize: 11, padding: '6px 10px 10px' }}>Transcribed by speech recognition, so names and jargon are sometimes misheard.</p>}
     </Panel>
   );
+}
+
+interface RadioJob {
+  key: number;
+  stage: 'installing' | 'transcribing' | 'done' | 'failed';
+  done: number;
+  total: number;
+  error?: string;
+}
+
+/** The Mac's transcription job for this session, polled while it runs. */
+function useRadioJob(key: number, onProgress: () => void) {
+  const [active, setActive] = useState<RadioJob | null>(null);
+  const [polling, setPolling] = useState(!HOSTED);
+  useEffect(() => {
+    if (!polling || HOSTED) return;
+    let last = -1;
+    const tick = async () => {
+      const r = await fetch('/api/radio/job').then((x) => x.json()).catch(() => null);
+      const j: RadioJob | null = r?.job?.key === key ? r.job : null;
+      setActive(j && j.stage !== 'done' ? j : null);
+      if (j && j.done !== last) {
+        last = j.done;
+        onProgress();
+      }
+      if (!j || j.stage === 'done' || j.stage === 'failed') setPolling(false);
+    };
+    void tick();
+    const id = setInterval(tick, 3000);
+    return () => clearInterval(id);
+  }, [polling, key]); // eslint-disable-line react-hooks/exhaustive-deps
+  const start = async () => {
+    const r = await fetch(`/api/sessions/${key}/radio/transcribe`, { method: 'POST' }).then((x) => x.json()).catch(() => null);
+    if (r?.job) setActive(r.job);
+    setPolling(true);
+  };
+  return { active, start };
 }

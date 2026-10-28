@@ -2,8 +2,9 @@
 // run locally through transformers.js), so radio can be read and searched.
 //
 // The speech model is big (a ~250 MB download plus ~700 MB of libraries), so it isn't part of
-// the app. The GitHub publish job installs it and transcribes each published session; the Mac
-// app then fetches the transcripts from the site. To run it yourself:
+// the app: the Mac app installs it the first time you ask for transcripts (Team radio panel).
+// (The publish job would transcribe too if it were installed there, but F1's file server
+// refuses downloads from GitHub's machines.) To run it by hand:
 //   npm i --no-save @huggingface/transformers@4 mpg123-decoder
 //   npx tsx server/transcribe.ts <session key>...      (writes cache/radio/<key>.json)
 import fs from 'node:fs';
@@ -21,15 +22,12 @@ type Asr = (audio: Float32Array, opts: object) => Promise<{ text: string }>;
 let asr: Promise<Asr> | null = null;
 let Decoder: (new () => { ready: Promise<void>; decode(b: Uint8Array): { channelData: Float32Array[]; sampleRate: number }; free(): void }) | null = null;
 
+const ROOT = path.join(import.meta.dirname, '..');
+export const SPEECH_PACKAGES = ['@huggingface/transformers@4', 'mpg123-decoder'];
+
 /** Can this machine transcribe (are the optional packages installed)? */
 export async function canTranscribe() {
-  try {
-    const names = ['@huggingface/transformers', 'mpg123-decoder'];
-    for (const n of names) await import(n);
-    return true;
-  } catch {
-    return false;
-  }
+  return ['@huggingface/transformers', 'mpg123-decoder'].every((n) => fs.existsSync(path.join(ROOT, 'node_modules', n, 'package.json')));
 }
 
 async function load() {
@@ -72,9 +70,17 @@ export async function transcribeClip(url: string): Promise<string> {
 }
 
 /** Transcribe a session's clips (skipping ones already done), until the deadline. */
-export async function transcribeAll(urls: string[], have: RadioTranscripts | null, deadline = Infinity, log = console.log): Promise<RadioTranscripts> {
+export async function transcribeAll(
+  urls: string[],
+  have: RadioTranscripts | null,
+  deadline = Infinity,
+  log = console.log,
+  onClip?: (done: number, total: number, sofar: RadioTranscripts) => void,
+): Promise<RadioTranscripts> {
   const out: RadioTranscripts = { model: MODEL, texts: { ...(have?.model === MODEL ? have.texts : {}) } };
+  let done = 0;
   for (const url of urls) {
+    done++;
     if (url in out.texts) continue;
     if (Date.now() > deadline) break;
     try {
@@ -82,6 +88,7 @@ export async function transcribeAll(urls: string[], have: RadioTranscripts | nul
     } catch (err) {
       log(`  couldn't transcribe a clip: ${(err as Error).message}`);
     }
+    onClip?.(done, urls.length, out);
   }
   return out;
 }
