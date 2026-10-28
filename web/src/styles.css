@@ -2854,3 +2854,6 @@ a {
 .plan-stint.t-SOFT { background: var(--soft); }
 .plan-stint.t-MEDIUM { background: var(--medium); }
 .plan-stint.t-HARD { background: var(--hard); }
+.era-index { display: grid; grid-template-columns: 1fr auto 1fr; gap: 12px; margin: 8px 0 12px; text-align: center; }
+.era-index > div:first-child { text-align: left; }
+.era-num { display: block; font-size: 40px; font-weight: 800; line-height: 1; font-variant-numeric: tabular-nums; }

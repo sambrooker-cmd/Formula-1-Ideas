@@ -1,4 +1,5 @@
 // Career head-to-head: any two drivers since 1950, side by side.
+import { EraAdjusted } from './EraAdjusted';
 import { useEffect, useMemo, useState } from 'react';
 import { allDrivers, career, careerStats, versus, type Career, type CareerDriver } from '../data/career';
 import { jolpicaProgress } from '../data/history';
@@ -177,6 +178,8 @@ function Body({ a, b }: { a: Career; b: Career }) {
           </div>
         </section>
       )}
+
+      <EraAdjusted a={a} b={b} colourA={A_COLOUR} colourB={B_COLOUR} />
 
       <section className="doc-section">
         <h2>Wins per season</h2>
