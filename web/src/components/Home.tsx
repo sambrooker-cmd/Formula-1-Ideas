@@ -89,6 +89,8 @@ export function Home() {
         }}
       />
 
+      <ExploreCard />
+
       <section className="card">
         <h2>Cached sessions</h2>
         <div className="session-list">
@@ -672,5 +674,35 @@ function MiniLayout({ layout }: { layout: Layout }) {
         </i>
       ))}
     </div>
+  );
+}
+
+/** Quick links to the history pages, with today's "on this day" race if it's already been loaded once. */
+function ExploreCard() {
+  const now = new Date();
+  const md = `${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+  let today: [string, number, number, string, string, string, string, string, string, number][] = [];
+  try {
+    const saved = JSON.parse(localStorage.getItem('pitwall.winners.v1') ?? 'null');
+    today = (saved?.data ?? []).filter((w: [string]) => w[0].slice(5) === md).sort((a: [string, number], b: [string, number]) => b[1] - a[1]);
+  } catch {
+    // not loaded yet
+  }
+  return (
+    <section className="card">
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+        <h2 style={{ margin: 0 }}>Explore</h2>
+        <span style={{ flex: 1 }} />
+        <a className="icon-btn" href="/head-to-head" style={{ textDecoration: 'none' }}>⚔ Head to head</a>
+        <a className="icon-btn" href="/predictions" style={{ textDecoration: 'none' }}>🔮 Predictions</a>
+        <a className="icon-btn" href="/on-this-day" style={{ textDecoration: 'none' }}>📅 On this day</a>
+      </div>
+      {today[0] && (
+        <div className="muted" style={{ marginTop: 8 }}>
+          On this day in {today[0][1]}: <b className="text">{today[0][7]}</b> won the {today[0][3]}
+          {today.length > 1 ? ` (and ${today.length - 1} more race${today.length > 2 ? 's' : ''} on this date)` : ''}.
+        </div>
+      )}
+    </section>
   );
 }

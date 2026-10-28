@@ -37,6 +37,7 @@ import { DriverSeasonPage } from './components/DriverSeason';
 import { CircuitGuidePage } from './components/CircuitGuide';
 import { CareerH2HPage } from './components/CareerH2H';
 import { PredictionsPage } from './components/Predictions';
+import { OnThisDayPage } from './components/OnThisDay';
 
 type PanelComponent = ComponentType<{ data: SessionData; area?: string }>;
 
@@ -287,6 +288,7 @@ function App() {
   if (path === '/circuit') return <CircuitGuidePage />;
   if (path === '/head-to-head') return <CareerH2HPage />;
   if (path === '/predictions') return <PredictionsPage />;
+  if (path === '/on-this-day') return <OnThisDayPage />;
   if (path === '/report')
     return (
       <div className="page">

@@ -2657,3 +2657,52 @@ a {
   background: #ffb02033;
   color: var(--sc);
 }
+
+/* ---------- on this day ---------- */
+.otd-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.otd-card {
+  display: grid;
+  grid-template-columns: 64px minmax(0, 1fr) auto;
+  gap: 14px;
+  align-items: center;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 10px 14px;
+}
+.otd-year {
+  font-size: 22px;
+  font-weight: 800;
+  color: var(--accent);
+}
+.otd-race {
+  font-weight: 700;
+}
+.otd-ago {
+  font-size: 12px;
+  text-align: right;
+}
+.otd-born {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.otd-chip {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 4px 12px;
+  text-decoration: none !important;
+}
+@media (max-width: 600px) {
+  .otd-card {
+    grid-template-columns: 52px 1fr;
+  }
+  .otd-ago {
+    display: none;
+  }
+}
