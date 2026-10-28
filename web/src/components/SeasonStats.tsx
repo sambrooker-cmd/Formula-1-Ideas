@@ -1,6 +1,7 @@
 // Season stats: points progression, the full driver and team tables, team-mate battles and winners.
 import { TitleMaths } from './TitleMaths';
 import { FormGuide } from './FormGuide';
+import { PitStopTable } from './PitStopTable';
 import { useMemo, useState } from 'react';
 import {
   completedRounds,
@@ -125,6 +126,8 @@ function SeasonBody({ h }: { h: SeasonHistory }) {
       </section>
 
       <TeamPace h={h} />
+
+      <PitStopTable h={h} />
 
       <section className="doc-section">
         <h2>Drivers</h2>
