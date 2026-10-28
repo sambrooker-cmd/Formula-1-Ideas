@@ -17,6 +17,7 @@ export const PANEL_ROUTES = [
   { path: '/companion', title: 'TV companion' },
   { path: '/driver', title: 'Driver dashboard' },
   { path: '/tv', title: 'TV mode' },
+  { path: '/report', title: 'Race report' },
 ] as const;
 
 export interface WindowSpec {

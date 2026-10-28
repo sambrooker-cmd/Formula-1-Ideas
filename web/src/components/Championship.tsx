@@ -16,7 +16,7 @@ interface Before {
 }
 
 const cache = new Map<string, Promise<Before>>();
-function loadBefore(year: number, date: string, kind: string) {
+export function loadBefore(year: number, date: string, kind: string) {
   const key = `${year}|${date}|${kind}`;
   if (!cache.has(key)) {
     const p = standingsBefore(year, date, kind === 'sprint' ? 'sprint' : 'race') as Promise<Before>;

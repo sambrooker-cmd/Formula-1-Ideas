@@ -20,6 +20,7 @@ import { AlertsHost } from './components/Alerts';
 import { DriverDash } from './components/DriverDash';
 import { TvMode } from './components/TvMode';
 import { SignInGate } from './components/SignInGate';
+import { RaceReport } from './components/RaceReport';
 
 type PanelComponent = ComponentType<{ data: SessionData; area?: string }>;
 
@@ -96,6 +97,11 @@ function TopBar({ data }: { data?: SessionData }) {
         </span>
       )}
       <span style={{ flex: 1 }} />
+      {data && location.pathname !== '/report' && (
+        <a className="icon-btn" href="/report" target="_blank" rel="noopener" style={{ textDecoration: 'none' }} title="A written summary of this session">
+          📰 Report
+        </a>
+      )}
       <a className="icon-btn" href="/" style={{ textDecoration: 'none' }}>
         Sessions & layouts
       </a>
@@ -217,6 +223,21 @@ function App() {
   if (path === '/wall') return <Wall />;
   if (path === '/companion') return <Companion />;
   if (path === '/driver') return <FullPage>{(data) => <DriverDash data={data} />}</FullPage>;
+  if (path === '/report')
+    return (
+      <div className="page">
+        <WithSession>
+          {(data) => (
+            <>
+              <TopBar data={data} />
+              <div className="report-scroll">
+                <RaceReport data={data} />
+              </div>
+            </>
+          )}
+        </WithSession>
+      </div>
+    );
   if (path === '/tv') return <FullPage compactBar topBar={false}>{(data) => <TvMode data={data} />}</FullPage>;
   if (SINGLE[path]) {
     document.title = `Pit Wall · ${path.slice(1)}`;
