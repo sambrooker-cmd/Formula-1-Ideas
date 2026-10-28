@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState, useSyncExternalStore } from 'react';
 import { clock, getState, now, subscribe } from './sync/clock';
 import { applyDelta, loadLiveSnapshot, loadSession, type SessionData } from './data/session';
+import { HOSTED } from './env';
+import { hostedLiveSnapshot, onHostedLive, startHostedLive } from './live/hostedLive';
 
 export function useSynced() {
   return useSyncExternalStore(subscribe, getState);
@@ -61,6 +63,7 @@ export function useSessionData(): SessionLoad {
   // snapshot loads are queued; duplicates are ignored by applyDelta.
   useEffect(() => {
     if (source !== 'live') return;
+    if (HOSTED) return followHostedLive(setLoad);
     let cancelled = false;
     let data: SessionData | null = null;
     let queue: Record<string, any[]>[] = [];
@@ -126,4 +129,28 @@ export function useElementSize<T extends HTMLElement>() {
     return () => ro.disconnect();
   }, []);
   return [ref, size] as const;
+}
+
+/** Hosted site: the live session is built in this browser from F1's feed (see live/hostedLive.ts). */
+function followHostedLive(setLoad: (l: SessionLoad) => void) {
+  startHostedLive();
+  let data: SessionData | null = null;
+  const load = () => {
+    try {
+      data = hostedLiveSnapshot();
+      clock.setLiveT0(data.meta.t0);
+      setLoad({ status: 'ready', data });
+    } catch {
+      data = null;
+      setLoad({ status: 'error', error: 'No live session right now. Waiting for one to start…' });
+    }
+  };
+  const off = onHostedLive((m) => {
+    if (m.type === 'session') load();
+    else if (data) applyDelta(data, m.topics);
+  });
+  load();
+  return () => {
+    off();
+  };
 }

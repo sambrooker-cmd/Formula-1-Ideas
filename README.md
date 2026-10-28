@@ -172,7 +172,7 @@ After a real session ends, download it normally (`npm run ingest` or the home pa
 The same app can run as a private website on Firebase's free plan. There's no server: a GitHub job adds each session (races, qualifying, sprints) about 2 hours after it finishes and publishes it to the site, so every device gets it instantly. Sign-in is with Google and only the accounts you list can get in, and your devices stay in sync through Firebase.
 
 Compared with running it on your Mac:
-- **Everything except live mode works.** Live needs the Mac version for now.
+- **Live works too**, in free mode: each device connects straight to F1's own live timing (the tower, gaps, tyres, pits, race control, weather and team radio are live; car positions are estimated, as in free mode on the Mac). For exact positions and telemetry, use the Mac version with an OpenF1 sponsor login.
 - **The race files are public files on the site.** The app itself needs sign-in, but anyone with a file's exact address could download it. The OpenF1 data licence allows non-commercial sharing.
 
 ### One-time setup

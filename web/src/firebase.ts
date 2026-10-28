@@ -9,7 +9,8 @@ type FirebaseOptions = Record<string, string>;
 const firebaseConfig = config.firebase as FirebaseOptions | null;
 const allowed = (config.allowedEmails as string[]).map((e) => e.toLowerCase());
 
-export const firebaseEnabled = HOSTED && !!firebaseConfig;
+// VITE_TEST_NO_SIGNIN only works on the development server (for automated testing), never in a build.
+export const firebaseEnabled = HOSTED && !!firebaseConfig && !(import.meta.env.DEV && import.meta.env.VITE_TEST_NO_SIGNIN);
 
 export interface SignedIn {
   email: string;

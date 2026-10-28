@@ -1,9 +1,10 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useSyncExternalStore } from 'react';
 import { clock } from '../sync/clock';
 import { useSynced } from '../hooks';
 import { captureLayout, openLayout, PANEL_ROUTES, PRESETS, savedLayouts, saveLayouts, type Layout } from '../layouts';
 import { Footer } from './Footer';
 import { HOSTED } from '../env';
+import { hostedLiveStatus, startHostedLive, subscribeHostedLive } from '../live/hostedLive';
 import { listSessions, season as loadSeason } from '../api';
 import { AccountLine } from './SignInGate';
 
@@ -153,7 +154,7 @@ export function Home() {
         </div>
       </section>
 
-      {!HOSTED && <LiveCard cached={cached} />}
+      {!HOSTED ? <LiveCard cached={cached} /> : <HostedLiveCard />}
 
       {!HOSTED && <IngestCard jobs={jobs} onStarted={(j) => setJobs((prev) => [...prev, j])} />}
 
@@ -763,5 +764,40 @@ function StorageLine({ cached, onChange }: { cached: Cached[]; onChange: () => v
         <option value="none">no limit</option>
       </select>
     </span>
+  );
+}
+
+/** Hosted site: live timing straight from F1 in this browser. */
+function HostedLiveCard() {
+  const live = useSyncExternalStore(subscribeHostedLive, hostedLiveStatus);
+  useEffect(() => startHostedLive(), []);
+  const openLive = (path: string) => {
+    clock.openLive();
+    location.href = path;
+  };
+  const label = live.connected ? (live.session ? `Live timing · ${live.session.name}` : 'Live timing · waiting for the next session') : 'Connecting to F1 live timing…';
+  return (
+    <section className="card live-card">
+      <h2>Live</h2>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+        <span>
+          <span className="dot" style={{ background: live.session ? 'var(--red)' : live.connected ? 'var(--green)' : 'var(--dim)' }} />
+          {label}
+        </span>
+        <span style={{ flex: 1 }} />
+        <button className="btn primary" disabled={!live.session} onClick={() => openLive('/companion')}>
+          Open companion view
+        </button>
+        <button className="btn" disabled={!live.session} onClick={() => openLive('/wall')}>
+          Full pit wall
+        </button>
+      </div>
+      {live.error && <div style={{ color: 'var(--red)', marginTop: 8, fontSize: 12 }}>{live.error}</div>}
+      <div className="muted" style={{ marginTop: 10, fontSize: 12 }}>
+        Uses F1's own live timing, straight from this device: the tower, gaps, tyres, pit stops, race control, flags, weather and team radio are live.
+        Car positions on the map are <b>estimated</b> from lap timing, and there's no live telemetry. Watching on the TV? Use <b>📺 TV delay → Sync to
+        TV</b> so the data never gets ahead of the picture; every signed-in screen follows the same delay.
+      </div>
+    </section>
   );
 }
