@@ -1393,3 +1393,40 @@ a {
   border-radius: 14px;
   padding: 24px;
 }
+
+/* ---------- pit battles ---------- */
+.moment.battle {
+  grid-template-columns: 74px minmax(0, 1fr) auto;
+}
+.battle-badge {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-align: center;
+  border-radius: 4px;
+  padding: 2px 4px;
+  border: 1px solid var(--line-2);
+  color: var(--muted);
+}
+.battle-badge.o-undercut {
+  color: var(--green);
+  border-color: var(--green);
+}
+.battle-badge.o-overcut {
+  color: var(--sc);
+  border-color: var(--sc);
+}
+.battle-tag {
+  margin-left: 6px;
+  font-size: 10px;
+  color: var(--sc);
+  border: 1px solid #ffb02066;
+  border-radius: 3px;
+  padding: 0 4px;
+}
+.rc-meta .good {
+  color: var(--green);
+}
+.rc-meta .bad {
+  color: var(--red);
+}

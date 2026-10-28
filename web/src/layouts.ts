@@ -6,6 +6,7 @@ export const PANEL_ROUTES = [
   { path: '/telemetry', title: 'Telemetry' },
   { path: '/race-control', title: 'Race control' },
   { path: '/strategy', title: 'Tyre strategy' },
+  { path: '/pit-battles', title: 'Pit battles (undercuts)' },
   { path: '/compare', title: 'Fastest laps' },
   { path: '/moments', title: 'Key moments' },
   { path: '/race-trace', title: 'Race trace' },

@@ -7,9 +7,9 @@ import { useNow } from '../hooks';
 import { Panel } from './Panel';
 
 const FILTERS: { id: string; label: string; kinds: MomentKind[] }[] = [
-  { id: 'all', label: 'All', kinds: ['start', 'finish', 'flag', 'overtake', 'pit', 'penalty', 'retire', 'fastest'] },
+  { id: 'all', label: 'All', kinds: ['start', 'finish', 'flag', 'overtake', 'pit', 'penalty', 'retire', 'fastest', 'undercut'] },
   { id: 'overtakes', label: 'Overtakes', kinds: ['overtake'] },
-  { id: 'pits', label: 'Pit stops', kinds: ['pit'] },
+  { id: 'pits', label: 'Pit stops', kinds: ['pit', 'undercut'] },
   { id: 'incidents', label: 'Flags & incidents', kinds: ['flag', 'penalty', 'retire', 'start', 'finish'] },
 ];
 
@@ -22,6 +22,7 @@ export const MOMENT_ICON: Record<MomentKind, string> = {
   penalty: '⚖️',
   retire: '✖',
   fastest: '⏱',
+  undercut: '⇄',
 };
 
 const LEAD_IN = 8000; // jump this far before a moment so you see it build up

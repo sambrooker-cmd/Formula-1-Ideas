@@ -10,6 +10,7 @@ import { TimingTower } from './components/TimingTower';
 import { RaceControl } from './components/RaceControl';
 import { Telemetry } from './components/Telemetry';
 import { Strategy } from './components/Strategy';
+import { PitBattles } from './components/PitBattles';
 import { LapCompare } from './components/LapCompare';
 import { KeyMoments } from './components/KeyMoments';
 import { PositionChart, RaceTrace, TyreWear } from './components/RaceCharts';
@@ -28,6 +29,7 @@ const SINGLE: Record<string, PanelComponent> = {
   '/telemetry': Telemetry,
   '/race-control': RaceControl,
   '/strategy': Strategy,
+  '/pit-battles': PitBattles,
   '/compare': LapCompare,
   '/moments': KeyMoments,
   '/race-trace': RaceTrace,
@@ -43,6 +45,7 @@ function StrategyTabs({ data }: { data: SessionData }) {
       storageKey="pitwall.tab.strategy"
       tabs={[
         { id: 'strategy', label: 'Strategy', render: (lead) => <Strategy data={data} area="strategy" lead={lead} /> },
+        { id: 'battles', label: 'Pit battles', render: (lead) => <PitBattles data={data} area="strategy" lead={lead} /> },
         { id: 'champ', label: 'Championship', render: (lead) => <Championship data={data} area="strategy" lead={lead} /> },
       ]}
     />

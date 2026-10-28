@@ -155,7 +155,7 @@ async function fetchWithProgress(url: string, onProgress?: (loaded: number, tota
 
 const CTORS = { i32: Int32Array, i16: Int16Array, u16: Uint16Array, u8: Uint8Array } as const;
 
-function index(meta: PackMeta, buf: ArrayBuffer): SessionData {
+export function index(meta: PackMeta, buf: ArrayBuffer): SessionData {
   const headerLen = new DataView(buf).getUint32(0, true);
   const header = JSON.parse(new TextDecoder().decode(new Uint8Array(buf, 4, headerLen))) as SamplesHeader;
   const base = 4 + headerLen;

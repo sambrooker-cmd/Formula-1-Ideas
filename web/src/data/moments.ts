@@ -2,8 +2,9 @@
 // have. Used by the Key moments panel, highlights playback, alerts and TV mode.
 import type { SessionData, TrackStatusKind } from './session';
 import { formatLapTime, isRetired, stintForLap } from './state';
+import { describeBattle, pitBattles } from './undercut';
 
-export type MomentKind = 'start' | 'finish' | 'flag' | 'overtake' | 'pit' | 'penalty' | 'retire' | 'fastest';
+export type MomentKind = 'start' | 'finish' | 'flag' | 'overtake' | 'pit' | 'penalty' | 'retire' | 'fastest' | 'undercut';
 
 export interface Moment {
   t: number;
@@ -130,6 +131,20 @@ function build(data: SessionData): Moment[] {
     if (!last) continue;
     const t = last.duration != null ? last.end + 30_000 : last.t + 150_000;
     out.push({ t, kind: 'retire', weight: 3, drivers: [r.driver], text: `${code(r.driver)} is out of the ${race ? 'race' : 'session'}`, lap: last.lap });
+  }
+
+  // Places won or lost in the pits (undercuts and overcuts).
+  for (const b of pitBattles(data)) {
+    if (b.outcome !== 'undercut' && b.outcome !== 'overcut') continue;
+    const winner = b.outcome === 'undercut' ? b.first : b.second;
+    out.push({
+      t: b.settled,
+      kind: 'undercut',
+      weight: b.forPosition <= 3 ? 3 : b.forPosition <= 10 ? 2 : 1,
+      drivers: [winner, winner === b.first ? b.second : b.first],
+      text: describeBattle(b, code),
+      lap: b.secondLap + 1,
+    });
   }
 
   // Each new fastest lap (after the opening laps, when they mean something).
