@@ -27,6 +27,7 @@ const { values } = parseArgs({
     site: { type: 'string' },
     max: { type: 'string', default: '12' },
     'budget-minutes': { type: 'string' },
+    'last-meetings': { type: 'string' },
   },
 });
 
@@ -113,6 +114,18 @@ async function wantedSessions(): Promise<Record<string, any>[]> {
     return out;
   }
   const year = Number(values.season) || new Date().getUTCFullYear();
+  const done = (s: Record<string, any>) => !s.is_cancelled && Date.parse(s.date_end) + SETTLE_MS < Date.now();
+  const types = [...WANTED, ...LITE];
+  if (values['last-meetings'] && !values.season) {
+    // The last N finished race weekends (looking back into last season early in the year), plus
+    // anything newer: each weekend's race, qualifying, sprint sessions and practice.
+    const n = Number(values['last-meetings']);
+    let pool = (await get('sessions', `year=${year}`)).filter(done);
+    if (new Set(pool.map((s) => s.meeting_key)).size < n) pool = [...(await get('sessions', `year=${year - 1}`)).filter(done), ...pool];
+    const meetings = [...new Set(pool.filter((s) => s.session_name === 'Race').sort((a, b) => Date.parse(b.date_start) - Date.parse(a.date_start)).map((s) => s.meeting_key))].slice(0, n);
+    const since = Date.now() - Number(values['recent-days']) * 86_400e3;
+    return pool.filter((s) => types.includes(s.session_name) && (meetings.includes(s.meeting_key) || Date.parse(s.date_end) > since));
+  }
   const all = await get('sessions', `year=${year}`);
   const since = values.season ? -Infinity : Date.now() - Number(values['recent-days']) * 86_400e3;
   return all.filter((s) => {
@@ -146,6 +159,7 @@ let changed = false;
 for (const [i, s] of todo.entries()) {
   if (Date.now() - startedAt > budgetMs) {
     console.log(`Time budget reached: ${todo.length - i} session(s) left for the next run`);
+    if (process.env.PUBLISH_DRY_RUN) for (const t of todo.slice(i)) console.log(`  ${t.year} ${t.location} · ${t.session_name}`);
     break;
   }
   const label = `${s.year} ${s.location} · ${s.session_name}`;

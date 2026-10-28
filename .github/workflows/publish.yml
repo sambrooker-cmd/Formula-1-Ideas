@@ -73,10 +73,11 @@ jobs:
           SESSION_KEYS: ${{ inputs.session_keys }}
         run: |
           # Each run stops starting new downloads after 80 minutes (the job limit is 2 hours) and
-          # publishes what it has; later runs carry on. Runs without a season catch up on this season.
+          # publishes what it has; the next run carries on. Normally: the last 3 race weekends plus
+          # anything new. A season typed in when running it by hand adds that whole season.
           ARGS="--site https://$PROJECT.web.app --budget-minutes 80 --max 200"
           if [[ "$SEASON" =~ ^[0-9]{4}$ ]]; then ARGS="$ARGS --season $SEASON"
-          elif [ -z "$SESSION_KEYS" ]; then ARGS="$ARGS --season $(date -u +%Y)"; fi
+          elif [ -z "$SESSION_KEYS" ]; then ARGS="$ARGS --last-meetings 3"; fi
           for k in $SESSION_KEYS; do
             if [[ "$k" =~ ^[0-9]+$ ]]; then ARGS="$ARGS --session-key $k"; fi
           done
