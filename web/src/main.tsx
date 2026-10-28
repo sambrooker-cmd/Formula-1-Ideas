@@ -33,6 +33,7 @@ import { Ratings } from './components/Ratings';
 import { Predictor } from './components/Predictor';
 import { Commentary } from './components/Commentary';
 import { TeamRadio } from './components/TeamRadio';
+import { Overtakes } from './components/Overtakes';
 import { openMiniWindow, Strip } from './components/Strip';
 
 // three.js is big: only load it when the 3D page is opened.
@@ -71,6 +72,7 @@ const SINGLE: Record<string, PanelComponent> = {
   '/predictor': Predictor,
   '/commentary': Commentary,
   '/radio': TeamRadio,
+  '/overtakes': Overtakes,
 };
 
 /** Pit wall bottom-right: tyre strategy or the live championship. */
@@ -118,6 +120,7 @@ function AnalysisPage({ data }: { data: SessionData }) {
           { id: 'sim', label: 'Strategy sim', render: (lead) => <StrategySim data={data} lead={lead} /> },
           { id: 'battles', label: 'Battles', render: (lead) => <Battles data={data} lead={lead} /> },
           { id: 'start', label: 'Start', render: (lead) => <Starts data={data} lead={lead} /> },
+          { id: 'overtakes', label: 'Overtakes', render: (lead) => <Overtakes data={data} lead={lead} /> },
           { id: 'ratings', label: 'Ratings', render: (lead) => <Ratings data={data} lead={lead} /> },
         ]}
       />

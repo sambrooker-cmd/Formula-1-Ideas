@@ -31,6 +31,7 @@ export const PANEL_ROUTES = [
   { path: '/predictor', title: 'Predictor' },
   { path: '/commentary', title: 'Commentary' },
   { path: '/radio', title: 'Team radio' },
+  { path: '/overtakes', title: 'Overtakes' },
   { path: '/strip', title: 'Timing strip (small window / TV)' },
   { path: '/strip?layout=row', title: 'Timing ticker (one line)' },
   { path: '/tv', title: 'TV mode' },

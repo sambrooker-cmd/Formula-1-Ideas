@@ -1,5 +1,6 @@
 // Circuit guide: the layout with numbered corners, the elevation over a lap, key numbers,
 // and who has won here.
+import { circuitOvertakes, difficulty, type RaceOvertakes } from '../data/overtaking';
 import { useEffect, useMemo, useState } from 'react';
 import { circuitHistory, elevation, layout, meetingFor, neutralisations, type CircuitHistory, type Elevation, type Layout, type NeutralRace } from '../data/circuit';
 import type { SeasonHistory } from '../data/history';
@@ -159,6 +160,7 @@ function CircuitBody({ h }: { h: SeasonHistory }) {
 
       {hist && hist.winners.length > 0 && <History hist={hist} year={h.year} />}
       <StartsHere circuitId={race.circuitId} />
+      <OvertakingHere circuitId={race.circuitId} />
     </>
   );
 }
@@ -301,6 +303,48 @@ function StartsHere({ circuitId }: { circuitId: string }) {
         })()}
         .
       </p>
+    </section>
+  );
+}
+
+function OvertakingHere({ circuitId }: { circuitId: string }) {
+  const [past, setPast] = useState<RaceOvertakes[] | null | undefined>(undefined);
+  useEffect(() => {
+    setPast(undefined);
+    circuitOvertakes(circuitId).then(setPast, () => setPast(null));
+  }, [circuitId]);
+  if (past === null || (past && !past.length)) return null;
+  const avg = past?.length ? past.reduce((s, r) => s + r.passes, 0) / past.length : 0;
+  const verdict = difficulty(avg);
+  const max = Math.max(1, ...(past ?? []).map((r) => r.passes));
+  return (
+    <section className="doc-section">
+      <h2>Overtaking</h2>
+      {past === undefined ? (
+        <div className="dim">Counting passes in recent races here…</div>
+      ) : (
+        <>
+          <p>
+            Overtaking here is <b className={verdict.tone}>{verdict.label}</b>: {Math.round(avg)} on-track passes a race on average over the last {past.length}{' '}
+            (a typical race has 30–50).
+          </p>
+          <div className="ot-bars">
+            {past.map((r) => (
+              <div key={r.year} className="ot-row">
+                <span className="num dim">{r.year}</span>
+                <span className="ot-bar">
+                  <i style={{ width: `${(r.passes / max) * 100}%` }} />
+                </span>
+                <span className="num">{r.passes}</span>
+              </div>
+            ))}
+          </div>
+          <p className="dim" style={{ fontSize: 11 }}>
+            Counted from lap-by-lap positions (Jolpica): places swapped on track between one lap and the next, leaving out lap 1 and anyone pitting. Where on the
+            lap the passes happen is in a replay's Analysis → Overtakes.
+          </p>
+        </>
+      )}
     </section>
   );
 }

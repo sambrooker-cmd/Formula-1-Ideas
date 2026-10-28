@@ -2843,3 +2843,8 @@ a {
 .form-bars { display: inline-flex; align-items: flex-end; gap: 3px; height: 22px; vertical-align: middle; }
 .form-bars i { width: 7px; border-radius: 2px; display: inline-block; }
 .form-table td { vertical-align: middle; }
+.ot-bars { display: flex; flex-direction: column; gap: 4px; max-width: 520px; margin: 8px 0; }
+.ot-row { display: grid; grid-template-columns: 44px 1fr 36px; gap: 8px; align-items: center; }
+.ot-bar { height: 10px; background: var(--panel-2); border-radius: 3px; overflow: hidden; }
+.ot-bar i { display: block; height: 100%; background: var(--blue); border-radius: 3px; }
+.ot-map { position: relative; height: 440px; }
