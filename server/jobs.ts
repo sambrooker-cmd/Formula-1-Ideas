@@ -1,5 +1,6 @@
 // Download jobs run one at a time, so the OpenF1 rate limit is never shared.
 import { ingestSession, type Progress } from './ingest.ts';
+import { cleanup } from './storage.ts';
 
 export interface Job {
   sessionKey: number;
@@ -23,6 +24,8 @@ export function enqueueIngest(sessionKey: number, origin: Job['origin'] = 'manua
     try {
       await ingestSession(sessionKey, (p) => (job.progress = p));
       job.state = 'done';
+      // Keep the downloads folder under its size limit.
+      cleanup(isDownloading);
     } catch (err) {
       job.state = 'error';
       job.error = (err as Error).message;
@@ -33,3 +36,4 @@ export function enqueueIngest(sessionKey: number, origin: Job['origin'] = 'manua
 
 export const recentJobs = () => jobs.slice(-10);
 export const busy = () => jobs.some((j) => j.state === 'running' || j.state === 'queued');
+export const isDownloading = (key: number) => jobs.some((j) => j.sessionKey === key && (j.state === 'running' || j.state === 'queued'));

@@ -18,6 +18,7 @@ interface Cached {
   complete: boolean;
   size_mb: number;
   lite?: boolean;
+  keep?: boolean;
 }
 
 interface Job {
@@ -92,7 +93,11 @@ export function Home() {
       <ExploreCard />
 
       <section className="card">
-        <h2>Cached sessions</h2>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+          <h2 style={{ margin: 0 }}>Cached sessions</h2>
+          <span style={{ flex: 1 }} />
+          {!HOSTED && <StorageLine cached={cached} onChange={refresh} />}
+        </div>
         <div className="session-list">
           {cached.length === 0 && <div className="dim">Nothing cached yet. Download a session below, or run <code>npm run ingest</code>.</div>}
           {cached.map((s) => (
@@ -108,6 +113,31 @@ export function Home() {
                   {sessionKey === s.session_key && ' · currently loaded'}
                 </div>
               </div>
+              {!HOSTED && (
+                <>
+                  <button
+                    className={'icon-btn' + (s.keep ? ' active' : '')}
+                    title={s.keep ? 'Kept: never deleted automatically' : 'Keep this one (never delete it automatically)'}
+                    onClick={async () => {
+                      await fetch(`/api/sessions/${s.session_key}/keep`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ keep: !s.keep }) });
+                      refresh();
+                    }}
+                  >
+                    {s.keep ? '★' : '☆'}
+                  </button>
+                  <button
+                    className="icon-btn"
+                    title="Delete this download"
+                    onClick={async () => {
+                      if (!confirm(`Delete ${s.year} ${s.meeting_name} · ${s.session_name}? You can download it again later.`)) return;
+                      await fetch(`/api/sessions/${s.session_key}`, { method: 'DELETE' });
+                      refresh();
+                    }}
+                  >
+                    🗑
+                  </button>
+                </>
+              )}
               {/Practice/.test(s.session_name) && (
                 <button className="btn" disabled={!s.complete} onClick={() => open(s.session_key, '/long-runs')}>
                   Long runs
@@ -704,5 +734,34 @@ function ExploreCard() {
         </div>
       )}
     </section>
+  );
+}
+
+/** Space used by downloads, and the limit the app keeps them under. */
+function StorageLine({ cached, onChange }: { cached: Cached[]; onChange: () => void }) {
+  const [limit, setLimit] = useState<number | null | undefined>(undefined);
+  useEffect(() => {
+    getJson<{ limitGB: number | null }>('/api/storage').then((s) => setLimit(s.limitGB), () => {});
+  }, []);
+  const total = cached.reduce((x, c) => x + c.size_mb, 0);
+  const change = async (v: string) => {
+    const limitGB = v === 'none' ? null : Number(v);
+    setLimit(limitGB);
+    await fetch('/api/storage', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ limitGB }) });
+    onChange();
+  };
+  if (limit === undefined) return null;
+  return (
+    <span className="muted" style={{ fontSize: 12, display: 'flex', alignItems: 'center', gap: 6 }} title="When downloads go over the limit, the races you opened longest ago are deleted (never ones marked ★)">
+      {(total / 1000).toFixed(1)} GB used · keep under
+      <select className="lap-jump" value={limit == null ? 'none' : String(limit)} onChange={(e) => change(e.target.value)}>
+        {[2, 5, 10, 20, 50].map((g) => (
+          <option key={g} value={g}>
+            {g} GB
+          </option>
+        ))}
+        <option value="none">no limit</option>
+      </select>
+    </span>
   );
 }

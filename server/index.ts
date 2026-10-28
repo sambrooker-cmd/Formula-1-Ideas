@@ -9,7 +9,8 @@ import { ensurePack } from './pack.ts';
 import { get } from './openf1.ts';
 import zlib from 'node:zlib';
 import { season, standingsBefore } from './season.ts';
-import { enqueueIngest, recentJobs } from './jobs.ts';
+import { enqueueIngest, isDownloading, recentJobs } from './jobs.ts';
+import { cleanup, deleteSession, markOpened, readStorage, sessionBytes, setKeep, setLimit, storageStatus } from './storage.ts';
 import { autoStatus, readSettings, startAutoDownload, writeSettings } from './autodownload.ts';
 import { addClient, liveMeta, liveSamples, liveState, startLiveFeed, startSimulation, status, stopSimulation } from './live.ts';
 import { startFreeLiveFeed } from './f1live.ts';
@@ -22,7 +23,29 @@ await app.register(fastifyWebsocket);
 
 // ---- cached sessions -------------------------------------------------------
 
-app.get('/api/sessions', async () => listCachedSessions());
+app.get('/api/sessions', async () => {
+  const { keep } = readStorage();
+  return listCachedSessions().map((s) => ({ ...s, size_mb: +(sessionBytes(s.session_key) / 1e6).toFixed(1), keep: keep.includes(s.session_key) }));
+});
+
+// ---- storage: size limit, keep, delete -------------------------------------------
+
+app.get('/api/storage', async () => storageStatus());
+app.post<{ Body: { limitGB?: number | null } }>('/api/storage', async (req) => {
+  if (req.body && 'limitGB' in req.body) setLimit(req.body.limitGB == null ? null : Math.max(1, Number(req.body.limitGB)));
+  const result = cleanup(isDownloading);
+  return { ...storageStatus(), ...result };
+});
+app.post<{ Params: { key: string }; Body: { keep: boolean } }>('/api/sessions/:key/keep', async (req) => {
+  setKeep(Number(req.params.key), !!req.body?.keep);
+  return storageStatus();
+});
+app.delete<{ Params: { key: string } }>('/api/sessions/:key', async (req, reply) => {
+  const key = Number(req.params.key);
+  if (isDownloading(key)) return reply.code(409).send({ error: 'This race is downloading right now.' });
+  deleteSession(key);
+  return storageStatus();
+});
 
 function sendGz(reply: any, file: string, type: string) {
   return reply
@@ -34,6 +57,7 @@ function sendGz(reply: any, file: string, type: string) {
 
 app.get<{ Params: { key: string } }>('/api/sessions/:key/meta', async (req, reply) => {
   const p = ensurePack(Number(req.params.key));
+  if (p) markOpened(Number(req.params.key));
   if (!p) return reply.code(404).send({ error: 'Session not cached' });
   return sendGz(reply, p.meta, 'application/json');
 });
@@ -204,4 +228,5 @@ if (process.env.PITWALL_F1_SNAPSHOT) {
 void prefetchNextOutline();
 setInterval(prefetchNextOutline, 6 * 3600e3);
 startAutoDownload();
+cleanup(isDownloading);
 console.log(`Pit wall API listening on http://localhost:${PORT}`);

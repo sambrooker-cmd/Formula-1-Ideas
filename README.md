@@ -92,6 +92,33 @@ Each session is stored in `cache/session-<key>.sqlite` (about 35 MB per race) pl
 - **🧊 3D replay** (top bar, or `/3d`): the race in 3D with the circuit's real hills (exaggerate them with **Hills ×3/×6**). Cameras: **Follow** (behind the selected car), **On-board**, **TV** (trackside cameras that cut as the car passes) and **Free** (drag to orbit, pinch or scroll to zoom). Click a car or a name in the list to follow it. It runs at 30 frames a second to save battery; tick **Smooth** for 60. Races downloaded before this was added get their heights automatically the first time you open them on the Mac. On the hosted site, races published earlier show a flat circuit until they're published again (`npm run publish:data -- --season 2025`).
 - **Season stats** (`/season-stats`), **driver pages** (click a driver in the standings) and the **circuit guide** (click a race in the calendar): points through the season, every driver's numbers, team-mate battles, corner maps, elevation, lap records and past winners. These come from Jolpica and are saved in your browser after the first load.
 
+### Analysis (📈 Analysis in the top bar, or `/analysis`)
+
+- **Ghost lap:** two laps (any drivers, any laps) raced against each other on the map from the same start, with the gap all the way round and the sector splits.
+- **Corners:** for two laps, each corner's slowest speed, where braking started and exit speed; or the whole field ranked by speed through each corner. Corner positions come from MultiViewer's free circuit data. (Times through single corners aren't shown: OpenF1's timestamps aren't precise enough between cars to be fair.)
+- **Tyre deg:** how much each compound slowed per lap in this race (fuel effect removed), and who has the best tyres right now.
+- **Clean-air pace:** each driver's typical lap when not stuck behind anyone, a like-for-like figure corrected for tyres, and how much traffic cost them.
+- **Strategy sim:** change a driver's pit laps or tyres and see where they'd have finished. The real strategy reproduces the real result exactly; only that car changes, and traffic isn't modelled.
+- **Battles:** every on-track fight (3+ laps within a second), who got through, and one click to watch it with both cars selected. Also a tab next to Key moments.
+
+### Mini window and timing strip
+
+**▣ Mini window** (top bar) floats positions and gaps in a small window that stays on top of other apps (Chrome/Edge; other browsers get a small pop-up). The same view is at `/strip` for a TV browser or AirPlay, and `/strip?layout=row` is a one-line ticker.
+
+### Weather
+
+The circuit guide shows the race-weekend forecast (or the weather on the day, for past races) from Open-Meteo, and a rain radar around the circuit from RainViewer. The next race on the home page links straight to it.
+
+### History and fun
+
+- **Head to head** (`/head-to-head`): any two drivers since 1950: titles, wins, podiums, how they did against each other and as team-mates, and season by season.
+- **Predictions** (`/predictions`): pick the podium before each race; 3 points for an exact position, 1 for a podium finisher in the wrong place, scored over the season. Saved on the Mac's Pit Wall (so the iPad sees the same picks) or your account on the hosted site.
+- **On this day** (`/on-this-day`): Grands Prix held on today's date in past years, and drivers born on it.
+
+### Storage
+
+Downloads are kept under a size limit (5 GB to start; change it next to **Cached sessions** on the home page). When over, the races you opened longest ago are deleted first. Star (☆) a race to keep it for good, or delete one with 🗑. Replay files from older versions of the app are tidied away automatically (they rebuild when needed).
+
 ### Multiple windows and screens
 
 - **⧉ Pop out** on any panel opens it in its own window.
