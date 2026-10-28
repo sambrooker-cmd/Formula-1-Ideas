@@ -211,3 +211,18 @@ export function tyreCost(model: DegModel, compound: string | null, age: number) 
   if (!c) return null;
   return (c.offset ?? 0) + c.slope * age;
 }
+
+/** Each driver's typical clean-air lap with fuel and tyres both taken out: the fairest pace figure. */
+export function likeForLikePace(data: SessionData, until = Infinity) {
+  const model = degModel(data, until);
+  const laps = raceLaps(data, until).filter((l) => l.clean);
+  const out = new Map<number, number>();
+  for (const n of data.driverOrder) {
+    const v = laps
+      .filter((l) => l.driver === n)
+      .map((l) => l.corrected - (tyreCost(model, l.compound, l.tyreAge) ?? 0))
+      .sort((a, b) => a - b);
+    if (v.length >= MIN_LAPS) out.set(n, v[Math.floor(v.length / 2)]);
+  }
+  return out;
+}

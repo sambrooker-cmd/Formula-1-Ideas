@@ -29,6 +29,7 @@ import { CleanAirPace, TyreDeg } from './components/RacePace';
 import { StrategySim } from './components/StrategySim';
 import { Battles } from './components/Battles';
 import { Starts } from './components/Starts';
+import { Ratings } from './components/Ratings';
 import { openMiniWindow, Strip } from './components/Strip';
 
 // three.js is big: only load it when the 3D page is opened.
@@ -63,6 +64,7 @@ const SINGLE: Record<string, PanelComponent> = {
   '/strategy-sim': StrategySim,
   '/battles': Battles,
   '/starts': Starts,
+  '/ratings': Ratings,
 };
 
 /** Pit wall bottom-right: tyre strategy or the live championship. */
@@ -110,6 +112,7 @@ function AnalysisPage({ data }: { data: SessionData }) {
           { id: 'sim', label: 'Strategy sim', render: (lead) => <StrategySim data={data} lead={lead} /> },
           { id: 'battles', label: 'Battles', render: (lead) => <Battles data={data} lead={lead} /> },
           { id: 'start', label: 'Start', render: (lead) => <Starts data={data} lead={lead} /> },
+          { id: 'ratings', label: 'Ratings', render: (lead) => <Ratings data={data} lead={lead} /> },
         ]}
       />
     </div>

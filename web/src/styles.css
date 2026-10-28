@@ -2761,3 +2761,50 @@ a {
 .sc-chip.k-VSC {
   background: #ffb02014;
 }
+
+/* ---------- ratings ---------- */
+.ratings {
+  list-style: none;
+  margin: 0;
+  padding: 4px 10px;
+}
+.rating-row {
+  display: grid;
+  grid-template-columns: 22px 42px 110px 1fr;
+  gap: 8px;
+  align-items: center;
+  padding: 5px 0;
+  border-bottom: 1px solid #ffffff08;
+  font-size: 12px;
+}
+.rating-score {
+  font-size: 18px;
+  font-weight: 800;
+  text-align: center;
+  border-radius: 6px;
+  background: var(--panel-2);
+}
+.rating-score.top {
+  color: var(--green);
+}
+.rating-score.low {
+  color: var(--red);
+}
+.rating-reasons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+.rating-chip {
+  border-radius: 4px;
+  padding: 1px 6px;
+  font-size: 11px;
+}
+.rating-chip.up {
+  background: #2fd17a1f;
+  color: #8be3b2;
+}
+.rating-chip.down {
+  background: #ff3b4e1a;
+  color: #ff9aa5;
+}

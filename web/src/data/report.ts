@@ -4,6 +4,7 @@ import type { SessionData } from './session';
 import { formatLapTime, lastAtOrBefore } from './state';
 import { pitBattles, describeBattle } from './undercut';
 import { phases, qualiAt } from './quali';
+import { raceRatings } from './ratings';
 
 export interface ChampBefore {
   drivers: { code: string; name: string; team: string; points: number }[];
@@ -208,6 +209,18 @@ function raceReport(data: SessionData, champ: ChampBefore | null): Report | null
   const best = data.bestLap;
   if (best?.lap.duration) movers.push(`Fastest lap: ${name(best.driver)}, ${formatLapTime(best.lap.duration)} on lap ${best.lap.lap}.`);
   if (movers.length) sections.push({ title: 'Up and down the order', paragraphs: [movers.join(' ')] });
+
+  // Best drive, by the numbers (see ratings.ts).
+  const rated = raceRatings(data);
+  if (rated.length >= 3) {
+    const [r1, r2, r3] = rated;
+    sections.push({
+      title: 'Drive of the race',
+      paragraphs: [
+        `By the numbers: ${name(r1.driver)} (${r1.score.toFixed(1)}): ${r1.reasons.filter((x) => x.points > 0).map((x) => x.text).slice(0, 3).join(', ')}. Then ${name(r2.driver)} (${r2.score.toFixed(1)}) and ${name(r3.driver)} (${r3.score.toFixed(1)}).`,
+      ],
+    });
+  }
 
   // Championship.
   if (champ?.drivers.length) {
