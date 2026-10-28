@@ -101,7 +101,15 @@ Each session is stored in `cache/session-<key>.sqlite` (about 35 MB per race) pl
 - **Strategy sim:** change a driver's pit laps or tyres and see where they'd have finished. The real strategy reproduces the real result exactly; only that car changes, and traffic isn't modelled.
 - **Battles:** every on-track fight (3+ laps within a second), who got through, and one click to watch it with both cars selected. Also a tab next to Key moments.
 - **Start:** grid to the end of lap 1 for every car, and how starts have gone at this circuit in recent years (did pole hold on, first-lap retirements).
+- **Overtakes:** where on the lap this race's passes happened (a dot per pass, a count per corner). Click a dot to watch it.
+- **Race strategy** (practice sessions; also a button on the home page): the quickest one- and two-stop plans for Sunday from the session's long runs, with pit windows.
 - **Ratings:** a mark out of 10 for every driver's race, with the reasons (result against the car, team-mate, like-for-like pace, places gained, penalties). The best is "Drive of the race" in the report.
+
+### Watching
+- **Catch up:** in Key moments, **▶ Highlights ▾ → Catch up in 5 / 10 / 20 minutes** plays the race's biggest moments in that time, start to flag.
+- **Commentary** (a tab next to Key moments, or `/commentary`), and 💬 on the track map for a caption line: who's closing on whom, who's in overtaking range, tyre offsets and the lead, worked out from the timing.
+- **Team radio** (a tab next to Key moments, or `/radio`): every clip with what was said, searchable. Transcripts are made by speech recognition when a session is published to the site (expect the odd misheard name); the Mac app fetches them from the site. Race control shows them too.
+- **🙈 Spoiler-free** (home page and the explore pages): hides results of recent races (the last three weeks) you haven't watched: winners and standings on the home page, season, driver, circuit and prediction pages, analysis of the race, and result notifications (alerts also stop saying who's leading). A race counts as watched when its replay reaches the chequered flag, or tap **I've watched it**. The setting follows you between devices.
 
 ### Predictor (a tab next to Key moments, or `/predictor`)
 
@@ -110,7 +118,7 @@ Each session is stored in `cache/session-<key>.sqlite` (about 35 MB per race) pl
 
 ### Circuit guide extras
 
-The circuit guide also shows **Safety Car odds** (how often there's been a Safety Car, VSC or red flag here, and on which laps) and **starts here** in recent years. **Season stats** has an **upgrade tracker**: each team's qualifying pace against the fastest car, race by race, so you can see who's found speed.
+The circuit guide also shows **overtaking** (on-track passes per race in recent years, and how that compares), **Safety Car odds** (how often there's been a Safety Car, VSC or red flag here, and on which laps) and **starts here** in recent years. **Season stats** also has **title maths** (who can still win, and exactly what the leader needs to seal it at the next race), a **form guide** (a mark for every race, averaged over the last five), a **pit stop league table** (each team's stops against the typical stop at each race) and an **upgrade tracker**: each team's qualifying pace against the fastest car, race by race, so you can see who's found speed.
 
 ### Mini window and timing strip
 
@@ -122,7 +130,7 @@ The circuit guide shows the race-weekend forecast (or the weather on the day, fo
 
 ### History and fun
 
-- **Head to head** (`/head-to-head`): any two drivers since 1950: titles, wins, podiums, how they did against each other and as team-mates, and season by season.
+- **Head to head** (`/head-to-head`): any two drivers since 1950: titles, wins, podiums, how they did against each other and as team-mates, and season by season. **Era-adjusted** compares each against their own team-mates (qualifying, races, share of the team's points), the fairest way to compare drivers from different eras.
 - **Predictions** (`/predictions`): pick the podium before each race; 3 points for an exact position, 1 for a podium finisher in the wrong place, scored over the season. Saved on the Mac's Pit Wall (so the iPad sees the same picks) or your account on the hosted site.
 - **On this day** (`/on-this-day`): Grands Prix held on today's date in past years, and drivers born on it.
 
