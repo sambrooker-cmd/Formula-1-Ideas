@@ -161,7 +161,7 @@ interface Season {
   year: number;
   afterRound: number;
   races: SeasonRace[];
-  drivers: { position: number; code: string; name: string; team: string; points: number; wins: number }[];
+  drivers: { id: string; position: number; code: string; name: string; team: string; points: number; wins: number }[];
   constructors: { position: number; name: string; points: number; wins: number }[];
 }
 
@@ -209,6 +209,13 @@ function SeasonCard({ jobs, onOpen, onDownload }: { jobs: Job[]; onOpen: (key: n
           ))}
         </select>
         {season && season.afterRound > 0 && <span className="dim" style={{ fontSize: 12 }}>Standings after round {season.afterRound}</span>}
+        <span style={{ flex: 1 }} />
+        <a className="icon-btn" href={`/season-stats?year=${year}`} style={{ textDecoration: 'none' }}>
+          📊 Season stats
+        </a>
+        <a className="icon-btn" href={`/circuit?year=${year}`} style={{ textDecoration: 'none' }}>
+          🗺 Circuit guide
+        </a>
       </div>
       {error && <div style={{ color: 'var(--red)' }}>{error}</div>}
       {!season && !error && <div className="dim">Loading the {year} season…</div>}
@@ -238,7 +245,9 @@ function SeasonCard({ jobs, onOpen, onDownload }: { jobs: Job[]; onOpen: (key: n
                   <div key={r.round} className={'cal-row' + (isNext ? ' next' : '') + (past ? '' : ' future')}>
                     <span className="num dim cal-round">{r.round}</span>
                     <span className="cal-name">
-                      {r.name.replace(' Grand Prix', ' GP')}
+                      <a href={`/circuit?year=${year}&round=${r.round}`} className="plain-link" title="Circuit guide">
+                        {r.name.replace(' Grand Prix', ' GP')}
+                      </a>
                       {r.sprint && <span className="tag out" style={{ marginLeft: 6 }}>SPRINT</span>}
                       <span className="dim cal-date"> · {fmtDate(r.start)}</span>
                     </span>
@@ -279,7 +288,7 @@ function SeasonCard({ jobs, onOpen, onDownload }: { jobs: Job[]; onOpen: (key: n
                 </thead>
                 <tbody>
                   {(allDrivers ? season.drivers : season.drivers.slice(0, 10)).map((d) => (
-                    <tr key={d.code + d.name} title={d.name} style={{ cursor: 'default' }}>
+                    <tr key={d.code + d.name} title={`${d.name}: season page`} onClick={() => (location.href = `/driver-season?year=${year}&driver=${d.id}`)}>
                       <td className="pos num">{d.position}</td>
                       <td className="l"><b>{d.code}</b></td>
                       <td className="l muted">{d.team}</td>

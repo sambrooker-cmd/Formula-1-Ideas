@@ -22,6 +22,9 @@ import { TvMode } from './components/TvMode';
 import { SignInGate } from './components/SignInGate';
 import { RaceReport } from './components/RaceReport';
 import { LongRuns } from './components/LongRuns';
+import { SeasonStatsPage } from './components/SeasonStats';
+import { DriverSeasonPage } from './components/DriverSeason';
+import { CircuitGuidePage } from './components/CircuitGuide';
 
 type PanelComponent = ComponentType<{ data: SessionData; area?: string }>;
 
@@ -226,6 +229,9 @@ function App() {
   if (path === '/wall') return <Wall />;
   if (path === '/companion') return <Companion />;
   if (path === '/driver') return <FullPage>{(data) => <DriverDash data={data} />}</FullPage>;
+  if (path === '/season-stats') return <SeasonStatsPage />;
+  if (path === '/driver-season') return <DriverSeasonPage />;
+  if (path === '/circuit') return <CircuitGuidePage />;
   if (path === '/report')
     return (
       <div className="page">

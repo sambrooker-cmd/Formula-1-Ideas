@@ -78,6 +78,7 @@ export async function buildSeason(year: number, deps: SeasonDeps) {
     afterRound: dList ? Number(dList.round) : 0,
     races,
     drivers: (dList?.DriverStandings ?? []).map((d: any) => ({
+      id: d.Driver.driverId as string,
       position: Number(d.position ?? d.positionText),
       code: d.Driver.code ?? d.Driver.familyName.slice(0, 3).toUpperCase(),
       name: `${d.Driver.givenName} ${d.Driver.familyName}`,
