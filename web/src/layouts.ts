@@ -17,6 +17,7 @@ export const PANEL_ROUTES = [
   { path: '/wall', title: 'Full pit wall' },
   { path: '/companion', title: 'TV companion' },
   { path: '/driver', title: 'Driver dashboard' },
+  { path: '/cockpit', title: 'Virtual cockpit' },
   { path: '/tv', title: 'TV mode' },
   { path: '/report', title: 'Race report' },
 ] as const;

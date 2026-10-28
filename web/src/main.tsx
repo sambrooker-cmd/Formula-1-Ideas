@@ -22,6 +22,7 @@ import { TvMode } from './components/TvMode';
 import { SignInGate } from './components/SignInGate';
 import { RaceReport } from './components/RaceReport';
 import { LongRuns } from './components/LongRuns';
+import { Cockpit } from './components/Cockpit';
 import { SeasonStatsPage } from './components/SeasonStats';
 import { DriverSeasonPage } from './components/DriverSeason';
 import { CircuitGuidePage } from './components/CircuitGuide';
@@ -247,6 +248,7 @@ function App() {
         </WithSession>
       </div>
     );
+  if (path === '/cockpit') return <FullPage compactBar>{(data) => <Cockpit data={data} />}</FullPage>;
   if (path === '/tv') return <FullPage compactBar topBar={false}>{(data) => <TvMode data={data} />}</FullPage>;
   if (SINGLE[path]) {
     document.title = `Pit Wall · ${path.slice(1)}`;
