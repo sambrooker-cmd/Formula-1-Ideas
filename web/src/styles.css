@@ -2848,3 +2848,9 @@ a {
 .ot-bar { height: 10px; background: var(--panel-2); border-radius: 3px; overflow: hidden; }
 .ot-bar i { display: block; height: 100%; background: var(--blue); border-radius: 3px; }
 .ot-map { position: relative; height: 440px; }
+.plan-head { margin: 14px 0 4px; font-size: 12px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); }
+.plan-stints { display: flex; gap: 3px; margin-bottom: 4px; max-width: 520px; }
+.plan-stint { border-radius: 4px; padding: 2px 6px; font-size: 11px; font-weight: 700; color: #07090d; white-space: nowrap; overflow: hidden; }
+.plan-stint.t-SOFT { background: var(--soft); }
+.plan-stint.t-MEDIUM { background: var(--medium); }
+.plan-stint.t-HARD { background: var(--hard); }

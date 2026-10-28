@@ -145,6 +145,11 @@ export function Home() {
                   Long runs
                 </button>
               )}
+              {/Practice/.test(s.session_name) && (
+                <button className="btn" disabled={!s.complete} onClick={() => open(s.session_key, '/strategy-plan')}>
+                  Race strategy
+                </button>
+              )}
               {!s.lite && (
                 <button className="btn primary" disabled={!s.complete} onClick={() => open(s.session_key)}>
                   Open pit wall
