@@ -83,6 +83,14 @@ Each session is stored in `cache/session-<key>.sqlite` (about 35 MB per race) pl
 3. **Keyboard:** Space plays and pauses. ← and → jump 10 s; hold Shift for 60 s.
 4. On the scrubber, Safety Car and VSC periods are shaded amber, red flags are red, and the thin ticks mark every 5 laps. **Jump to…** goes to lights out or any lap.
 
+### More views
+
+- **📰 Report** (top bar, or `/report`): a written summary of the race or qualifying session, with the full classification. It hides itself until you ask, so it won't spoil a replay.
+- **Pit battles** (Strategy tab, or `/pit-battles`): every undercut and overcut between close cars, whether it worked, and how much time it gained. Successful ones also appear in Key moments.
+- **Long runs** (analysis tab, or `/long-runs`): in practice, finds each driver's race-style runs and ranks their pace by tyre, with a chart of the laps. In a race the same tab shows stint pace. Practice sessions on the home page have a **Long runs** button.
+- **Virtual cockpit** (`/cockpit`): the selected car from the inside: shift lights, gear, speed, pedals, live delta to their best lap, a g-force circle and a track view that turns with the car.
+- **Season stats** (`/season-stats`), **driver pages** (click a driver in the standings) and the **circuit guide** (click a race in the calendar): points through the season, every driver's numbers, team-mate battles, corner maps, elevation, lap records and past winners. These come from Jolpica and are saved in your browser after the first load.
+
 ### Multiple windows and screens
 
 - **⧉ Pop out** on any panel opens it in its own window.
