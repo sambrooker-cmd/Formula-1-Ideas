@@ -2885,3 +2885,10 @@ a {
 .analysis-page { min-width: 0; max-width: 100%; }
 .panel-head .tabs { flex: 0 1 auto; min-width: 0; }
 .r3d-caption { position: absolute; top: 58px; left: 50%; transform: translateX(-50%); background: rgba(7, 9, 13, 0.82); border: 1px solid var(--line-2); border-radius: 8px; padding: 6px 14px; font-size: 14px; font-weight: 600; white-space: nowrap; pointer-events: none; }
+.r3d-board[hidden] { display: none; }
+.r3d-duel-btn.on { background: var(--accent, #e10600); color: #fff; }
+.r3d-duel { position: absolute; top: 48px; left: 8px; display: flex; flex-direction: column; gap: 8px; max-width: min(440px, calc(100% - 16px)); background: rgba(15, 19, 26, 0.88); border: 1px solid var(--line-2); border-radius: 8px; padding: 10px; font-size: 13px; }
+.r3d-duel-pick, .r3d-duel-times, .r3d-duel-ctl { display: flex; flex-wrap: wrap; gap: 6px 12px; align-items: center; }
+.r3d-duel-gap { font-size: 16px; font-weight: 700; }
+.r3d-duel-gap .muted { font-size: 12px; font-weight: 400; }
+.r3d-duel-ctl input[type='range'] { flex: 1 1 140px; min-width: 0; }

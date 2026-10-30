@@ -61,6 +61,10 @@ export class ReplayScene {
   private director: Director;
   /** What the director is showing (for the caption), when directing. */
   directorCaption: string | null = null;
+  /** Lap duel: two laps raced against each other; frame() then takes time into the lap. */
+  private duel: { a: { n: number; t0: number }; b: { n: number; t0: number } } | null = null;
+  /** A second copy of a car, for a duel between two laps by the same driver. */
+  private twin: CarObj | null = null;
   private shot: Shot = 'follow';
   private side: Trackside | null = null;
   private ground: THREE.Mesh | null = null;
@@ -172,6 +176,34 @@ export class ReplayScene {
     this.cars.set(n, { n, group, parts, label, heading: 0, hint: -1, prev: null, steer: 0, compound: undefined, checkedAt: -Infinity });
   }
 
+  /** Race two laps against each other (null to go back to the replay). */
+  setDuel(duel: { a: { n: number; t0: number }; b: { n: number; t0: number } } | null) {
+    this.duel = duel;
+    this.needsRender = true;
+    if (duel && duel.a.n === duel.b.n && this.twin?.n !== duel.b.n) {
+      if (this.twin) {
+        this.world.remove(this.twin.group);
+        this.scene.remove(this.twin.label);
+      }
+      const d = this.data.drivers.get(duel.b.n);
+      const parts = makeCar(d?.colour ?? '#888888', String(duel.b.n));
+      // The second lap is shown as a see-through ghost.
+      parts.group.traverse((o) => {
+        const m = o as THREE.Mesh;
+        if (!m.material) return;
+        const mat = (m.material as THREE.Material).clone();
+        mat.transparent = true;
+        mat.opacity = 0.45;
+        mat.depthWrite = false;
+        m.material = mat;
+      });
+      this.world.add(parts.group);
+      const label = makeLabel(`${d?.code ?? duel.b.n} B`, d?.colour ?? '#888');
+      this.scene.add(label);
+      this.twin = { n: duel.b.n, group: parts.group, parts, label, heading: 0, hint: -1, prev: null, steer: 0, compound: undefined, checkedAt: -Infinity };
+    }
+  }
+
   /** The circuit's place on Earth, for the sun. */
   setLocation(lat: number, lng: number) {
     this.location = { lat, lng };
@@ -218,7 +250,7 @@ export class ReplayScene {
     if (nowMs - this.lastFrame < 1000 / maxFps - 2) return;
     // Nothing to draw when paused and nobody's touching anything: save the battery.
     if (this.mode === 'orbit' && this.controls.update()) this.needsRender = true;
-    const state = `${this.selected}|${this.exaggeration}|${this.labels}|${this.mode}|${this.canvas.width}x${this.canvas.height}`;
+    const state = `${this.selected}|${this.duel ? `${this.duel.a.n}.${this.duel.a.t0}-${this.duel.b.n}.${this.duel.b.t0}` : ''}|${this.exaggeration}|${this.labels}|${this.mode}|${this.canvas.width}x${this.canvas.height}`;
     if (t === this.lastRenderT && !this.needsRender && state === this.lastState && !this.env.wet) return;
     this.lastRenderT = t;
     this.lastState = state;
@@ -233,11 +265,21 @@ export class ReplayScene {
       if (this.ground) this.ground.position.y = -0.3;
       this.appliedUp = up;
     }
-    this.updateWorld(t);
+    const duel = this.duel;
+    this.updateWorld(duel ? duel.a.t0 + t : t);
     const wet = this.env.wet;
     const blink = wet && Math.floor(nowMs / 250) % 2 === 0;
-    for (const c of this.cars.values()) {
-      const p = isRetired(this.data, c.n, t) ? null : carPose(this.data, this.track, c.n, t);
+    const cars = [...this.cars.values()];
+    if (this.twin) {
+      this.twin.group.visible = false;
+      this.twin.label.visible = false;
+      if (duel && duel.a.n === duel.b.n) cars.push(this.twin);
+    }
+    for (const c of cars) {
+      // In a duel only the two laps are shown, each at the same time into its lap.
+      const own = duel ? (c === this.twin ? duel.b.t0 : c.n === duel.a.n ? duel.a.t0 : c.n === duel.b.n ? duel.b.t0 : null) : 0;
+      const ct = own == null ? null : duel ? own + t : t;
+      const p = ct == null || (!duel && isRetired(this.data, c.n, t)) ? null : carPose(this.data, this.track, c.n, ct);
       if (!p || p.stale) {
         c.group.visible = false;
         c.label.visible = false;
@@ -259,7 +301,7 @@ export class ReplayScene {
       else c.prev = new THREE.Vector3(px, py, pz);
       // Past ~1 rad a frame the eye can't follow anyway (it would look like it's going backwards).
       if (moved < 30) for (const w of c.parts.wheels) w.rotation.z -= Math.min(moved / WHEEL_R, 1.1);
-      const ahead = carPose(this.data, this.track, c.n, t + 250);
+      const ahead = carPose(this.data, this.track, c.n, (ct ?? t) + 250);
       let steer = 0;
       if (ahead && !ahead.stale) {
         const ds = Math.hypot(ahead.X - px, ahead.Z - pz);
@@ -269,9 +311,9 @@ export class ReplayScene {
       c.steer += (steer - c.steer) * Math.min(1, dt * 10);
       for (const s of c.parts.steer) s.rotation.y = c.steer;
       // Tyre compound (checked about once a second of race time) and the rain light.
-      if (Math.abs(t - c.checkedAt) > 1000) {
-        c.checkedAt = t;
-        const lap = currentLap(this.data, c.n, t)?.lap ?? 1;
+      if (Math.abs((ct ?? t) - c.checkedAt) > 1000) {
+        c.checkedAt = ct ?? t;
+        const lap = currentLap(this.data, c.n, ct ?? t)?.lap ?? 1;
         const compound = stintForLap(this.data, c.n, Math.max(1, lap))?.compound ?? null;
         if (compound !== c.compound) {
           c.compound = compound;
@@ -299,7 +341,8 @@ export class ReplayScene {
     let subject = this.selected;
     this.shot = this.mode === 'director' ? 'tv' : this.mode;
     this.directorCaption = null;
-    if (this.mode === 'director') {
+    if (duel) subject = duel.a.n;
+    if (this.mode === 'director' && !duel) {
       const d = this.director.update(t, nowMs);
       if (d) {
         subject = d.subject;

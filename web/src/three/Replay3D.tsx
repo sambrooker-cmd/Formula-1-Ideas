@@ -8,6 +8,9 @@ import { useNow, useSynced } from '../hooks';
 import { ReplayScene, type CameraMode, type Detail } from './scene';
 import { seasonHistory } from '../data/history';
 import { track3d } from '../data/track3d';
+import { formatLapTime } from '../data/state';
+import { fracAt, timeAtFrac } from '../data/laptrace';
+import { LapSelect, useLapPair } from '../components/LapPicker';
 
 const MODES: { id: CameraMode; label: string; title: string }[] = [
   { id: 'director', label: '🎬 Director', title: 'Sit back: it finds the best action (fights, passes, pit stops) and cuts between cameras for you' },
@@ -50,6 +53,30 @@ export default function Replay3D({ data }: { data: SessionData }) {
   const focus = selected[0] ?? rows[0]?.driver ?? null;
   const track = track3d(data);
 
+  // Lap duel: two laps (any drivers, any laps) raced against each other on their own clock.
+  const [duelOn, setDuelOn] = useState(false);
+  const { a, b, setA, setB, trA, trB } = useLapPair(data);
+  const duelClock = useRef({ on: false, g: 0, playing: false, speed: 1, last: 0 });
+  const [, setTick] = useState(0);
+  const total = Math.max(trA?.lap.duration ?? 0, trB?.lap.duration ?? 0) * 1000;
+  useEffect(() => {
+    const dc = duelClock.current;
+    const s = sceneRef.current;
+    const ready = duelOn && !!trA && !!trB;
+    dc.on = ready;
+    dc.g = 0;
+    dc.playing = ready;
+    dc.last = performance.now();
+    s?.setDuel(ready ? { a: { n: a.driver, t0: trA!.lap.t }, b: { n: b.driver, t0: trB!.lap.t } } : null);
+    if (ready) clock.pause();
+  }, [duelOn, trA, trB, a.driver, b.driver, detail]);
+  // Redraw the gap readout a few times a second while the duel runs.
+  useEffect(() => {
+    if (!duelOn) return;
+    const id = setInterval(() => setTick((x) => x + 1), 150);
+    return () => clearInterval(id);
+  }, [duelOn]);
+
   // Create the scene once per session; render in a loop paced by the frame cap.
   useEffect(() => {
     const canvas = canvasRef.current!;
@@ -76,9 +103,16 @@ export default function Replay3D({ data }: { data: SessionData }) {
     const loop = () => {
       raf = requestAnimationFrame(loop);
       const st = getState();
+      const dc = duelClock.current;
+      const wall = performance.now();
+      if (dc.on) {
+        if (dc.playing) dc.g = Math.min(dc.g + (wall - dc.last) * dc.speed, totalRef.current + 1500);
+        if (dc.g >= totalRef.current + 1500) dc.playing = false;
+        dc.last = wall;
+      }
       // Full rate while playing; a gentle rate when paused so free-camera dragging stays smooth enough.
-      const fps = st.playing || st.live ? (saved('smooth', false) ? 60 : 30) : 20;
-      scene.frame(now(), fps);
+      const fps = st.playing || st.live || (dc.on && dc.playing) ? (saved('smooth', false) ? 60 : 30) : 20;
+      scene.frame(dc.on ? dc.g : now(), fps);
     };
     raf = requestAnimationFrame(loop);
     return () => {
@@ -97,6 +131,22 @@ export default function Replay3D({ data }: { data: SessionData }) {
     s.labels = labels;
     if (s.mode !== mode || s.controls.enabled !== (mode === 'orbit')) s.setMode(mode);
   }, [focus, exag, labels, mode, detail]);
+
+  const totalRef = useRef(total);
+  totalRef.current = total;
+  const dc = duelClock.current;
+  let gap: number | null = null;
+  let finished = false;
+  if (duelOn && trA && trB) {
+    const g = dc.g;
+    finished = g >= trA.lap.duration! * 1000 && g >= trB.lap.duration! * 1000;
+    if (g >= trA.lap.duration! * 1000) gap = trA.lap.duration! - trB.lap.duration!;
+    else gap = (g - timeAtFrac(trB, Math.min(1, fracAt(trA, g)))) / 1000;
+  }
+  const dA = data.drivers.get(a.driver);
+  const dB = data.drivers.get(b.driver);
+  const same = a.driver === b.driver;
+  const leaderCode = gap == null ? '' : gap <= 0 ? `${dA?.code}${same ? ' (A)' : ''}` : `${dB?.code}${same ? ' (B)' : ''}`;
 
   const choose = (m: CameraMode) => {
     setMode(m);
@@ -124,8 +174,8 @@ export default function Replay3D({ data }: { data: SessionData }) {
         <select
           className="lap-jump"
           value={focus ?? ''}
-          disabled={mode === 'director'}
-          title={mode === 'director' ? 'The director chooses who to follow' : undefined}
+          disabled={mode === 'director' || duelOn}
+          title={mode === 'director' ? 'The director chooses who to follow' : duelOn ? 'The camera follows lap A' : undefined}
           onChange={(e) => clock.setSelected([Number(e.target.value)])}
           aria-label="Car to follow"
         >
@@ -135,6 +185,13 @@ export default function Replay3D({ data }: { data: SessionData }) {
             </option>
           ))}
         </select>
+        <button
+          className={'r3d-duel-btn' + (duelOn ? ' on' : '')}
+          title="Race two laps against each other: pick any two drivers and laps (great for qualifying)"
+          onClick={() => setDuelOn((x) => !x)}
+        >
+          ⏱ Lap duel
+        </button>
         <span className="seg" title="Exaggerate the hills so they're easier to see">
           {[1, 3, 6].map((x) => (
             <button
@@ -184,7 +241,82 @@ export default function Replay3D({ data }: { data: SessionData }) {
           High detail
         </label>
       </div>
-      <div className="r3d-board">
+      {duelOn && (
+        <div className="r3d-duel">
+          <div className="r3d-duel-pick">
+            <LapSelect data={data} value={a} onChange={setA} tag="A" />
+            <LapSelect data={data} value={b} onChange={setB} tag="B" />
+          </div>
+          {!trA || !trB ? (
+            <div className="muted">No position data for one of those laps; choose another.</div>
+          ) : (
+            <>
+              <div className="r3d-duel-times">
+                <span>
+                  <b className="lap-pick-tag" style={{ background: dA?.colour }}>A</b> {dA?.code} {formatLapTime(trA.lap.duration)}
+                </span>
+                <span>
+                  <b className="lap-pick-tag" style={{ background: dB?.colour }}>B</b> {dB?.code} {formatLapTime(trB.lap.duration)}
+                </span>
+              </div>
+              <div className="r3d-duel-gap num">
+                {gap == null || Math.abs(gap) < 0.0005
+                  ? 'Level'
+                  : `${finished ? 'Final: ' : ''}${leaderCode} ${finished ? 'by' : 'ahead by'} ${Math.abs(gap).toFixed(3)} s`}
+                <span className="muted"> · {(dc.g / 1000).toFixed(1)} s into the lap</span>
+              </div>
+              <div className="r3d-duel-ctl">
+                <button
+                  onClick={() => {
+                    if (!dc.playing && dc.g >= total) dc.g = 0;
+                    dc.playing = !dc.playing;
+                    dc.last = performance.now();
+                    setTick((x) => x + 1);
+                  }}
+                >
+                  {dc.playing ? '⏸ Pause' : '▶ Play'}
+                </button>
+                <button
+                  onClick={() => {
+                    dc.g = 0;
+                    dc.playing = true;
+                    dc.last = performance.now();
+                  }}
+                >
+                  ⟲ Restart
+                </button>
+                <span className="seg" role="group" aria-label="Duel speed">
+                  {[0.5, 1, 2].map((x) => (
+                    <button
+                      key={x}
+                      className={dc.speed === x ? 'on' : ''}
+                      onClick={() => {
+                        dc.speed = x;
+                        setTick((y) => y + 1);
+                      }}
+                    >
+                      {x}×
+                    </button>
+                  ))}
+                </span>
+                <input
+                  type="range"
+                  min={0}
+                  max={total}
+                  step={50}
+                  value={dc.g}
+                  aria-label="Time into the lap"
+                  onChange={(e) => {
+                    dc.g = Number(e.target.value);
+                    setTick((x) => x + 1);
+                  }}
+                />
+              </div>
+            </>
+          )}
+        </div>
+      )}
+      <div className="r3d-board" hidden={duelOn}>
         {rows.slice(0, 22).map((r) => {
           const d = data.drivers.get(r.driver);
           return (
