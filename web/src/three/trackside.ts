@@ -160,6 +160,72 @@ const crowdTexture = () =>
       }
   });
 
+/** Circuits on city streets (walls close to the track, buildings instead of fields). */
+const STREET = /monaco|monte carlo|singapore|marina bay|baku|jeddah|las vegas|valencia|sochi/i;
+export const isStreetCircuit = (name: string) => STREET.test(name);
+
+const wallTexture = () =>
+  canvasTexture(512, 64, (ctx) => {
+    // Concrete wall faced with plain coloured advertising boards (no real brands).
+    ctx.fillStyle = '#c9ccd1';
+    ctx.fillRect(0, 0, 512, 64);
+    const boards = ['#1d3f8f', '#e8e8e8', '#c8102e', '#111', '#f2b705', '#0b7a75'];
+    for (let i = 0; i < 4; i++) {
+      ctx.fillStyle = boards[(i * 3 + 1) % boards.length];
+      ctx.fillRect(i * 128 + 4, 8, 120, 40);
+    }
+    ctx.fillStyle = 'rgba(0,0,0,0.25)';
+    ctx.fillRect(0, 54, 512, 10);
+  });
+
+export const pavementTexture = () =>
+  canvasTexture(512, 512, (ctx) => {
+    const r = rng(23);
+    ctx.fillStyle = '#5d6066';
+    ctx.fillRect(0, 0, 512, 512);
+    for (let i = 0; i < 20000; i++) {
+      const v = 75 + r() * 40;
+      ctx.fillStyle = `rgb(${v},${v + 2},${v + 5})`;
+      ctx.fillRect(r() * 512, r() * 512, 1.5, 1.5);
+    }
+    // Paving joints.
+    ctx.strokeStyle = 'rgba(0,0,0,0.18)';
+    for (let i = 0; i <= 512; i += 64) {
+      ctx.beginPath();
+      ctx.moveTo(i, 0);
+      ctx.lineTo(i, 512);
+      ctx.moveTo(0, i);
+      ctx.lineTo(512, i);
+      ctx.stroke();
+    }
+  });
+
+/** Building fronts: rows of windows, some lit (lit ones glow at night). */
+const facadeTextures = () => {
+  const r = rng(31);
+  const lit: [number, number][] = [];
+  const day = canvasTexture(256, 256, (ctx) => {
+    ctx.fillStyle = '#8d939c';
+    ctx.fillRect(0, 0, 256, 256);
+    for (let y = 8; y < 256; y += 16)
+      for (let x = 6; x < 256; x += 16) {
+        const on = r() < 0.45;
+        if (on) lit.push([x, y]);
+        ctx.fillStyle = on ? '#4b5a6e' : '#3a4452';
+        ctx.fillRect(x, y, 10, 9);
+      }
+  });
+  const glow = canvasTexture(256, 256, (ctx) => {
+    ctx.fillStyle = '#000';
+    ctx.fillRect(0, 0, 256, 256);
+    for (const [x, y] of lit) {
+      ctx.fillStyle = r() < 0.5 ? '#ffd9a0' : '#fff2d6';
+      ctx.fillRect(x, y, 10, 9);
+    }
+  });
+  return { day, glow };
+};
+
 // ---- geometry helpers ---------------------------------------------------------------------
 
 interface Frame {
@@ -297,7 +363,7 @@ export interface Trackside {
   casters: THREE.Object3D[];
 }
 
-export function buildTrackside(track: Track3D, detail: 'high' | 'standard'): Trackside {
+export function buildTrackside(track: Track3D, detail: 'high' | 'standard', street = false): Trackside {
   const flat = new THREE.Group();
   const upright = new THREE.Group();
   const receivers: THREE.Mesh[] = [];
@@ -348,7 +414,7 @@ export function buildTrackside(track: Track3D, detail: 'high' | 'standard'): Tra
   const gravelMat = new THREE.MeshStandardMaterial({ map: gravelTexture(), roughness: 1 });
   (gravelMat.map as THREE.Texture).repeat.set(1, 3);
   const runoffMat = new THREE.MeshStandardMaterial({ map: runoffTexture(), roughness: 0.85 });
-  for (const side of [1, -1]) {
+  for (const side of street ? [] : [1, -1]) {
     const outside = (i: number) => inCorner[i] && Math.sign(fr[i].curv) === -side; // turning away from this side
     const tight = (i: number) => Math.abs(fr[i].curv) > 1 / 60;
     const width = (i: number) => side * (HALF + KERB_W + Math.min(18, 6 + Math.abs(fr[i].curv) * 900));
@@ -415,7 +481,7 @@ export function buildTrackside(track: Track3D, detail: 'high' | 'standard'): Tra
 
   // Barriers: blue-and-white walls with catch fencing above, set back from the track. Where
   // another part of the circuit runs close by, the wall is left out rather than cutting across.
-  const barrierMat = new THREE.MeshStandardMaterial({ map: barrierTexture(), roughness: 0.8 });
+  const barrierMat = new THREE.MeshStandardMaterial({ map: street ? wallTexture() : barrierTexture(), roughness: 0.8 });
   const fenceMat = new THREE.MeshStandardMaterial({ map: fenceTexture(), transparent: true, alphaTest: 0.2, opacity: 0.8, side: THREE.DoubleSide, roughness: 0.6, metalness: 0.4 });
   const barrierGeos: THREE.BufferGeometry[] = [];
   const fenceGeos: THREE.BufferGeometry[] = [];
@@ -424,6 +490,8 @@ export function buildTrackside(track: Track3D, detail: 'high' | 'standard'): Tra
   for (const side of [1, -1]) {
     const off = (i: number) => {
       const out = Math.sign(fr[i].curv) === -side && inCorner[i];
+      // Street circuits: walls right by the track (a little room at the corners' escape roads).
+      if (street) return side * (HALF + KERB_W + (out ? 3 : 0.8));
       return side * (HALF + KERB_W + (out ? Math.min(20, 8 + Math.abs(fr[i].curv) * 900) : 4));
     };
     const ok = (i: number) => {
@@ -451,7 +519,7 @@ export function buildTrackside(track: Track3D, detail: 'high' | 'standard'): Tra
         const v = pos.length / 3;
         pos.push(x, h0, z, x, h1, z);
         base.push(pts[i][1], pts[i][1]);
-        const u = (k === n ? track.length : dist[i]) / 4;
+        const u = (k === n ? track.length : dist[i]) / (street ? 24 : 4);
         uv.push(u, 0, u, 1);
         if (prev >= 0) idx.push(prev, v, prev + 1, prev + 1, v, v + 1);
         prev = v;
@@ -569,7 +637,7 @@ export function buildTrackside(track: Track3D, detail: 'high' | 'standard'): Tra
   }
 
   // Trees: scattered beyond the barriers, never on the circuit.
-  const treeCount = detail === 'high' ? 700 : 220;
+  const treeCount = street ? (detail === 'high' ? 120 : 40) : detail === 'high' ? 700 : 220;
   const r = rng(42);
   const trunkGeo = new THREE.CylinderGeometry(0.25, 0.35, 3, 5);
   trunkGeo.translate(0, 1.5, 0);
@@ -607,6 +675,64 @@ export function buildTrackside(track: Track3D, detail: 'high' | 'standard'): Tra
   trunks.count = crowns.count = placed;
   upright.add(trunks, crowns);
   casters.push(crowns);
+
+  // Street circuits: city blocks of buildings along both sides, set back behind the walls.
+  const facade = street ? facadeTextures() : null;
+  const buildingMat = new THREE.MeshStandardMaterial({
+    map: facade?.day ?? null,
+    emissiveMap: facade?.glow ?? null,
+    emissive: new THREE.Color(0x000000),
+    roughness: 0.8,
+    metalness: 0.1,
+  });
+  const buildingBase: { x: number; z: number; y: number; w: number; d: number; h: number; rot: number }[] = [];
+  if (street) {
+    const rb = rng(77);
+    let next = 0;
+    for (let i = 0; i < n; i++) {
+      if (dist[i] < next) continue;
+      next = dist[i] + 22 + rb() * 18;
+      for (const side of [1, -1]) {
+        if (rb() < 0.25) continue; // the odd gap: a square, a side street
+        const w = 16 + rb() * 22;
+        const d = 14 + rb() * 18;
+        const h = 12 + rb() ** 2 * (detail === 'high' ? 90 : 60);
+        const o = side * (HALF + 10 + d / 2 + rb() * 8);
+        const x = pts[i][0] + fr[i].nx * o;
+        const z = pts[i][2] + fr[i].nz * o;
+        if (near.distance(x, z, Math.max(w, d) / 2 + 14, -1, 0) < Math.max(w, d) / 2 + 10) continue;
+        buildingBase.push({ x, z, y: pts[i][1], w, d, h, rot: Math.atan2(fr[i].nx, fr[i].nz) });
+      }
+    }
+  }
+  const boxGeo = new THREE.BoxGeometry(1, 1, 1);
+  boxGeo.translate(0, 0.5, 0);
+  // Three height bands, each with its windows repeated to suit, so windows stay storey-sized.
+  const bands = [
+    { min: 0, max: 30, rows: 2 },
+    { min: 30, max: 60, rows: 4 },
+    { min: 60, max: Infinity, rows: 7 },
+  ].map((band) => {
+    const list = buildingBase.filter((b) => b.h > band.min && b.h <= band.max);
+    const mat = buildingMat.clone();
+    if (facade) {
+      mat.map = facade.day.clone();
+      mat.map.repeat.set(2, band.rows);
+      mat.map.needsUpdate = true;
+      mat.emissiveMap = facade.glow.clone();
+      mat.emissiveMap.repeat.set(2, band.rows);
+      mat.emissiveMap.needsUpdate = true;
+    }
+    // Roofs are plain (box faces: +x, −x, +y = roof, −y, +z, −z).
+    const roof = new THREE.MeshStandardMaterial({ color: 0x55595f, roughness: 0.9 });
+    const mesh = new THREE.InstancedMesh(boxGeo, [mat, mat, roof, roof, mat, mat], Math.max(1, list.length));
+    mesh.count = list.length;
+    if (list.length) {
+      upright.add(mesh);
+      casters.push(mesh);
+    }
+    return { list, mesh, mat };
+  });
 
   // Floodlight towers, only switched on (shown) for night races.
   const towers = new THREE.Group();
@@ -654,6 +780,15 @@ export function buildTrackside(track: Track3D, detail: 'high' | 'standard'): Tra
       trunks.setMatrixAt(k, m);
       crowns.setMatrixAt(k, m);
     });
+    for (const band of bands) {
+      band.list.forEach((b, k) => {
+        q.setFromAxisAngle(yAxis, b.rot);
+        m.compose(new THREE.Vector3(b.x, b.y * up - 0.3, b.z), q, new THREE.Vector3(b.w, b.h, b.d));
+        band.mesh.setMatrixAt(k, m);
+      });
+      band.mesh.instanceMatrix.needsUpdate = true;
+      band.mesh.computeBoundingSphere();
+    }
     trunks.instanceMatrix.needsUpdate = true;
     crowns.instanceMatrix.needsUpdate = true;
     trunks.computeBoundingSphere();
@@ -666,7 +801,11 @@ export function buildTrackside(track: Track3D, detail: 'high' | 'standard'): Tra
     asphalt,
     setUp,
     setStartLights: (k) => lamps.forEach((pair, i) => pair.forEach((l) => (l.material = i < k ? lampOn : lampOff))),
-    setNight: (on) => (towers.visible = on),
+    setNight: (on) => {
+      // Street circuits are lit by the city; elsewhere, floodlight towers.
+      towers.visible = on && !street;
+      for (const band of bands) band.mat.emissive.set(on ? 0xffffff : 0x000000);
+    },
     receivers,
     casters,
   };

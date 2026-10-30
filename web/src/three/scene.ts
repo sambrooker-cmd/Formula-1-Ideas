@@ -9,7 +9,7 @@ import { currentLap, isRetired, stintForLap, weatherAt } from '../data/state';
 import { track3d, type Track3D } from '../data/track3d';
 import { carPose } from '../data/carpath';
 import { makeCar, setRainLight, stripeMaterial, WHEEL_R, type CarParts } from './carModel';
-import { buildTrackside, grassTexture, TRACK_WIDTH, type Trackside } from './trackside';
+import { buildTrackside, grassTexture, isStreetCircuit, pavementTexture, type Trackside } from './trackside';
 import { Environment, sunPosition } from './environment';
 
 export type CameraMode = 'orbit' | 'follow' | 'onboard' | 'tv';
@@ -105,7 +105,9 @@ export class ReplayScene {
     const { pts } = this.track;
     if (pts.length < 3) return;
     const n = pts.length;
-    const side = buildTrackside(this.track, this.detail);
+    const m = this.data.meta.session;
+    const street = isStreetCircuit(`${m.circuit} ${m.location} ${m.meetingName}`);
+    const side = buildTrackside(this.track, this.detail, street);
     this.side = side;
     this.world.add(side.flat);
     this.scene.add(side.upright);
@@ -114,9 +116,9 @@ export class ReplayScene {
       side.casters.forEach((o) => o.traverse((x) => ((x as THREE.Mesh).castShadow = true)));
     }
 
-    // Grass all around, just under the lowest point of the circuit.
+    // Grass all around (paving in a city), just under the lowest point of the circuit.
     const size = this.track.radius * 8 + 2000;
-    const grass = grassTexture();
+    const grass = street ? pavementTexture() : grassTexture();
     grass.repeat.set(size / 40, size / 40);
     const ground = new THREE.Mesh(new THREE.PlaneGeometry(size, size), new THREE.MeshStandardMaterial({ map: grass, roughness: 1 }));
     ground.rotation.x = -Math.PI / 2;
