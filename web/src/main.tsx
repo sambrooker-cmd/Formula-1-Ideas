@@ -172,22 +172,22 @@ function TopBar({ data }: { data?: SessionData }) {
       )}
       <span style={{ flex: 1 }} />
       {data && (
-        <button className="icon-btn" onClick={() => openMiniWindow(data)} title="Positions and gaps in a small window that stays on top of other apps">
+        <button className="icon-btn tb-extra" onClick={() => openMiniWindow(data)} title="Positions and gaps in a small window that stays on top of other apps">
           ▣ Mini window
         </button>
       )}
       {data && location.pathname !== '/analysis' && (
-        <a className="icon-btn" href="/analysis" target="_blank" rel="noopener" style={{ textDecoration: 'none' }} title="Ghost laps, corners, tyre wear, pace, strategy simulator and battles">
+        <a className="icon-btn tb-extra" href="/analysis" target="_blank" rel="noopener" style={{ textDecoration: 'none' }} title="Ghost laps, corners, tyre wear, pace, strategy simulator and battles">
           📈 Analysis
         </a>
       )}
       {data && location.pathname !== '/3d' && (
-        <a className="icon-btn" href="/3d" target="_blank" rel="noopener" style={{ textDecoration: 'none' }} title="The replay in 3D, in a new window">
+        <a className="icon-btn tb-extra" href="/3d" target="_blank" rel="noopener" style={{ textDecoration: 'none' }} title="The replay in 3D, in a new window">
           🧊 3D
         </a>
       )}
       {data && location.pathname !== '/report' && (
-        <a className="icon-btn" href="/report" target="_blank" rel="noopener" style={{ textDecoration: 'none' }} title="A written summary of this session">
+        <a className="icon-btn tb-extra" href="/report" target="_blank" rel="noopener" style={{ textDecoration: 'none' }} title="A written summary of this session">
           📰 Report
         </a>
       )}

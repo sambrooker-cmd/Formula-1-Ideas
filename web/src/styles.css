@@ -2872,3 +2872,15 @@ a {
 .view-card.disabled:hover { border-color: var(--line); }
 .card.tips ul { margin: 8px 0 0; padding-left: 18px; color: var(--muted); line-height: 1.6; }
 .card.tips b { color: var(--text); }
+
+/* Narrow screens (iPad in portrait): the extra top-bar buttons live in "All views", and the
+   playback bar wraps rather than running off the edge. */
+@media (max-width: 900px) {
+  .topbar { gap: 8px; padding: 6px 10px; }
+  .topbar .tb-extra { display: none; }
+  .playback { flex-wrap: wrap; row-gap: 6px; }
+  .playback .scrubber { flex: 1 1 100%; order: 10; }
+  .playback .link-chip { font-size: 11px; }
+}
+.analysis-page { min-width: 0; max-width: 100%; }
+.panel-head .tabs { flex: 0 1 auto; min-width: 0; }
