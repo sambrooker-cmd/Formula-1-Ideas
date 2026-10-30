@@ -4,6 +4,9 @@
 // lap is left out (that's the start). Kept in the browser after the first load (it's ~12
 // requests per race).
 import { jolpica } from './history';
+import type { SessionData } from './session';
+import { keyMoments } from './moments';
+import { lastAtOrBefore, trackStatusAt } from './state';
 
 export interface RaceOvertakes {
   year: number;
@@ -88,4 +91,40 @@ export function difficulty(perRace: number) {
   if (perRace < 45) return { label: 'average', tone: '' };
   if (perRace < 70) return { label: 'easy', tone: 'good' };
   return { label: 'very easy', tone: 'good' };
+}
+
+/**
+ * On-track passes in a replay, counted by the same rules as the lap-by-lap count above so the
+ * two agree: not behind the Safety Car, neither car on an in- or out-lap, and the place kept for
+ * at least 30 seconds (so timing flicker and passes straight back don't count).
+ */
+export function replayPasses(data: SessionData, lapOne = false) {
+  const pos = (n: number, t: number) => {
+    const s = data.positions.get(n);
+    const i = s ? lastAtOrBefore(s.t, t) : -1;
+    return i >= 0 ? s!.v[i] : 99;
+  };
+  const lapOf = (n: number, t: number) => {
+    const ls = data.laps.get(n) ?? [];
+    for (let i = ls.length - 1; i >= 0; i--) if (ls[i].t <= t) return ls[i].lap;
+    return 0;
+  };
+  const pitLaps = new Map<number, Set<number>>();
+  const pitting = (n: number, lap: number) => {
+    if (!pitLaps.has(n)) pitLaps.set(n, new Set((data.pits.get(n) ?? []).flatMap((p) => (p.lap != null ? [p.lap, p.lap + 1] : []))));
+    return pitLaps.get(n)!.has(lap);
+  };
+  const seen = new Set<string>();
+  return keyMoments(data).filter((m) => {
+    if (m.kind !== 'overtake') return false;
+    if (!lapOne && (m.lap ?? 0) <= 1) return false;
+    if (['SC', 'VSC', 'RED', 'SC_ENDING', 'VSC_ENDING'].includes(trackStatusAt(data, m.t).status)) return false;
+    const [a, b] = m.drivers;
+    if (!(pos(a, m.t - 4000) > pos(b, m.t - 4000) && pos(a, m.t + 30_000) < pos(b, m.t + 30_000))) return false;
+    if (pitting(a, lapOf(a, m.t)) || pitting(b, lapOf(b, m.t))) return false;
+    const k = `${a}-${b}-${m.lap}`;
+    if (seen.has(k)) return false;
+    seen.add(k);
+    return true;
+  });
 }

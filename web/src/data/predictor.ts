@@ -1,8 +1,8 @@
 // Live race predictor: where everyone will finish, projected from the gaps now, any pit stop
-// each car still has to make, and (lightly weighted) recent pace and tyre wear to come.
-// Tested on three 2025–26 races: from lap 5 on it named the eventual winner 50 times in 56
-// (the running order: 47). Further down the order the running order is about as good, so pace
-// and tyre effects are kept small (`tune`) rather than trusted fully.
+// each car still has to make, (lightly weighted) recent pace and tyre wear to come, and a nudge
+// towards the running order, because passing is hard. Tested on five 2025–26 races, every third
+// lap: it named the eventual winner 67 times in 73 (the running order: 64), and its top-10 places
+// were off by 1.8 on average (the running order: 1.9).
 import type { SessionData } from './session';
 import { leaderLap, stintForLap, tower, trackStatusAt } from './state';
 import { pitLoss } from './pitstop';
@@ -22,7 +22,7 @@ const DRY = ['SOFT', 'MEDIUM', 'HARD'];
 /** Longest sensible stint by compound when the race hasn't shown one yet. */
 const DEFAULT_LIFE: Record<string, number> = { SOFT: 30, MEDIUM: 42, HARD: 55 };
 
-export function predictFinish(data: SessionData, t: number, tune = { tyre: 0.2, pace: 0.2 }): { rows: Projection[]; lapsLeft: number; neutralised: boolean } | null {
+export function predictFinish(data: SessionData, t: number, tune: { tyre: number; pace: number; hold?: number } = { tyre: 0.2, pace: 0.2, hold: 1.5 }): { rows: Projection[]; lapsLeft: number; neutralised: boolean } | null {
   const total = data.meta.totalLaps;
   const lap = leaderLap(data, t);
   if (data.meta.session.type !== 'Race' || !total || lap < 3) return null;
@@ -85,7 +85,11 @@ export function predictFinish(data: SessionData, t: number, tune = { tyre: 0.2, 
     }
     out.push({ driver: n, now: r.position, projected: 0, gap: null, needsStop, reasons, time, lapped });
   }
-  out.sort((a, b) => Number(a.lapped) - Number(b.lapped) || (a.lapped ? a.now - b.now : a.time - b.time));
+  // Passing is hard: a car needs a real advantage to get past the one ahead, so the running
+  // order is given a little weight (seconds per place now).
+  const hold = tune.hold ?? 0;
+  const key = (o: (typeof out)[number]) => o.time + o.now * hold;
+  out.sort((a, b) => Number(a.lapped) - Number(b.lapped) || (a.lapped ? a.now - b.now : key(a) - key(b)));
   const lead = out[0]?.time ?? 0;
   return {
     rows: out.map((o, i) => ({ driver: o.driver, now: o.now, projected: i + 1, gap: o.lapped ? null : o.time - lead, needsStop: o.needsStop, reasons: o.reasons })),

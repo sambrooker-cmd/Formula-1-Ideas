@@ -54,9 +54,9 @@ function RacePredictor({ data, area, lead }: { data: SessionData; area?: string;
             })}
           </ul>
           <p className="dim" style={{ fontSize: 11, padding: '6px 10px 10px' }}>
-            From the gaps now, the stops each car still has to make (a second compound, or tyres that won't last), and a light touch of recent pace and tyre wear.
-            Tested on three races, it named the eventual winner more often than the running order did (50 of 56 checks against 47); lower down, treat it as a rough
-            guide. Safety Cars and incidents can't be predicted.
+            From the gaps now, the stops each car still has to make (a second compound, or tyres that won't last), a light touch of recent pace and tyre wear,
+            and a nudge towards the running order because passing is hard. Tested on five races, it named the winner more often than the running order did (67
+            of 73 checks against 64) and placed the top ten more closely. Safety Cars and incidents can't be predicted.
           </p>
         </>
       )}

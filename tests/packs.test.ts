@@ -27,6 +27,10 @@ test('a real race: moments, commentary, ratings, predictor and the 3D track', { 
   const mid = d.lapStartTimes[30]!;
   const p = predictFinish(d, mid)!;
   assert.equal(p.rows.length, new Set(p.rows.map((r) => r.driver)).size);
+  // Passes in the replay are counted like the lap-by-lap count (58 for this race).
+  const { replayPasses } = await import('../web/src/data/overtaking.ts');
+  const passes = replayPasses(d).length;
+  assert.ok(passes > 40 && passes < 85, `passes ${passes}`);
   const t = track3d(d);
   assert.ok(t.pts.length > 800, 'outline smoothed into a fine curve');
   assert.ok(Math.abs(t.length - 5280) < 300, `lap length ${t.length}`);

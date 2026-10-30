@@ -240,7 +240,21 @@ if (await canTranscribe()) {
     e.radio = true;
     changed = true;
   }
-} else console.log('Speech model not installed: no radio transcripts this run');
+} else {
+  // Without the speech model, just make sure no session claims transcripts it doesn't have.
+  for (const e of list) {
+    if (!e.radio) continue;
+    try {
+      const have = JSON.parse(fs.readFileSync(radioFile(e.session_key), 'utf8')) as RadioTranscripts;
+      if (Object.keys(have.texts).length) continue;
+    } catch {
+      // missing: fall through
+    }
+    fs.rmSync(radioFile(e.session_key), { force: true });
+    e.radio = undefined;
+    changed = true;
+  }
+}
 
 list.sort((a, b) => b.date_start - a.date_start);
 fs.writeFileSync(LIST, JSON.stringify(list, null, 1));

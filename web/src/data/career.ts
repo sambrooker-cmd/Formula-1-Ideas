@@ -22,6 +22,8 @@ export interface Career {
   /** Final championship position by year. */
   standings: Record<number, number>;
   fetchedAt: number;
+  /** False when some seasons' standings couldn't be fetched. */
+  complete?: boolean;
 }
 
 const WEEK = 7 * 86_400e3;
@@ -81,7 +83,9 @@ export function career(id: string): Promise<Career> {
 async function loadCareer(id: string): Promise<Career> {
   const key = `pitwall.career.v1.${id}`;
   const hit = stored<Career>(key, WEEK);
-  if (hit) return hit;
+  // A career saved while Jolpica was busy can be missing some seasons' standings: only trust
+  // a complete one for the week, and try an incomplete one again after ten minutes.
+  if (hit && (hit.complete !== false || Date.now() - hit.fetchedAt < 10 * 60_000)) return hit;
   const info = await jolpica(`drivers/${id}.json`);
   const d = info.DriverTable.Drivers[0];
   if (!d) throw new Error(`No driver "${id}"`);
@@ -129,6 +133,7 @@ async function loadCareer(id: string): Promise<Career> {
       continue;
     }
     const st = await jolpica(`${y}/drivers/${id}/driverStandings.json`).catch(() => null);
+    if (!st) c.complete = false;
     const row = st?.StandingsTable?.StandingsLists?.[0]?.DriverStandings?.[0];
     if (!row) continue;
     c.standings[y] = Number(row.position ?? row.positionText);

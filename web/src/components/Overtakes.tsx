@@ -1,10 +1,11 @@
 // Where the passes happened in this race: each on-track pass as a dot on the circuit, and a
-// count by corner. Passes are the key moments' position swaps; the dot is where the passing
-// car was when the timing registered it, which can be a little after the move itself.
+// count by corner. Passes are counted by the same rules as the circuit guide's numbers (see
+// replayPasses); the dot is where the passing car was when the timing registered it, which can
+// be a little after the move itself.
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import type { SessionData } from '../data/session';
-import { keyMoments } from '../data/moments';
-import { carPosition, trackStatusAt } from '../data/state';
+import { replayPasses } from '../data/overtaking';
+import { carPosition } from '../data/state';
 import { cornersForSession } from '../data/circuit';
 import { clock } from '../sync/clock';
 import { useElementSize } from '../hooks';
@@ -23,18 +24,7 @@ export function Overtakes({ data, area, lead }: { data: SessionData; area?: stri
 
   const passes = useMemo(() => {
     const out: { t: number; lap: number | null; a: number; b: number; x: number; y: number; text: string }[] = [];
-    const swaps = keyMoments(data).filter((m) => m.kind === 'overtake');
-    // A swap undone within a minute is the timing flickering (or a pass straight back): count neither.
-    const undone = (m: (typeof swaps)[number]) =>
-      swaps.some((o) => o !== m && o.drivers[0] === m.drivers[1] && o.drivers[1] === m.drivers[0] && Math.abs(o.t - m.t) < 60_000);
-    const seen = new Set<string>();
-    for (const m of swaps) {
-      if (!lapOne && (m.lap ?? 0) <= 1) continue;
-      // Places can't change behind the Safety Car: those swaps are timing noise.
-      if (['SC', 'VSC', 'RED', 'SC_ENDING', 'VSC_ENDING'].includes(trackStatusAt(data, m.t).status) || undone(m)) continue;
-      const k = `${m.drivers[0]}-${m.drivers[1]}-${m.lap}`;
-      if (seen.has(k)) continue;
-      seen.add(k);
+    for (const m of replayPasses(data, lapOne)) {
       const s = data.samples.get(m.drivers[0]);
       const p = s && carPosition(s, m.t);
       if (p && !p.stale) out.push({ t: m.t, lap: m.lap, a: m.drivers[0], b: m.drivers[1], x: p.x, y: p.y, text: m.text });

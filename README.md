@@ -113,7 +113,7 @@ Each session is stored in `cache/session-<key>.sqlite` (about 35 MB per race) pl
 
 ### Predictor (a tab next to Key moments, or `/predictor`)
 
-- **Races:** the projected finishing order from the gaps now, the stops each car still has to make (a second tyre compound, or tyres that won't last), and recent pace. Tested on past races it picked the winner more often than the running order did; further down, treat it as a rough guide.
+- **Races:** the projected finishing order from the gaps now, the stops each car still has to make (a second tyre compound, or tyres that won't last), and recent pace. It also leans a little towards the running order, because passing is hard. Tested on five races it beat simply reading the running order, both for the winner and for the top ten.
 - **Qualifying:** the knockout line and the time needed to get through, who's in the drop zone, and for cars on a flying lap a projected time from the sectors they've done, with where it would put them.
 
 ### Circuit guide extras
