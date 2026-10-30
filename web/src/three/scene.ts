@@ -1,23 +1,35 @@
-// The 3D replay scene (three.js): circuit ribbon with heights, cars in team colours with labels,
-// and four cameras: orbit, follow, on-board and TV-style trackside cameras.
+// The 3D replay scene (three.js): the circuit and its surroundings with real heights, detailed
+// cars in team colours (wheels turn and steer, tyre stripes show the compound), a sky and sun
+// for the real time and place, rain when it rained, and four cameras: orbit, follow, on-board
+// (from the driver's seat) and TV-style trackside cameras.
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import type { SessionData } from '../data/session';
-import { isRetired } from '../data/state';
+import { currentLap, isRetired, lastAtOrBefore, stintForLap, weatherAt } from '../data/state';
 import { car3d, track3d, type Track3D } from '../data/track3d';
+import { makeCar, setRainLight, stripeMaterial, WHEEL_R, type CarParts } from './carModel';
+import { buildTrackside, grassTexture, TRACK_WIDTH, type Trackside } from './trackside';
+import { Environment, sunPosition } from './environment';
 
 export type CameraMode = 'orbit' | 'follow' | 'onboard' | 'tv';
 
-const TRACK_WIDTH = 14;
-const CAR_LIFT = 0.45;
+/** The car model's ground is at y = 0; positions are lifted this little bit to sit on the road. */
+const CAR_LIFT = 0.02;
+
+export type Detail = 'high' | 'standard';
 
 interface CarObj {
   n: number;
   group: THREE.Group;
+  parts: CarParts;
   label: THREE.Sprite;
   heading: number;
   hint: number;
   last: THREE.Vector3 | null;
+  prev: THREE.Vector3 | null;
+  steer: number;
+  compound: string | null | undefined;
+  checkedAt: number;
 }
 
 export class ReplayScene {
@@ -38,29 +50,38 @@ export class ReplayScene {
   private camLook = new THREE.Vector3();
   private lastFrame = 0;
   private raycaster = new THREE.Raycaster();
+  private env: Environment;
+  private side: Trackside | null = null;
+  private ground: THREE.Mesh | null = null;
+  private appliedUp = -1;
+  private location: { lat: number; lng: number } | null = null;
+  private sunCheckedAt = -Infinity;
+  private weatherCheckedAt = -Infinity;
+  private lightsLit = -1;
 
   constructor(
     private canvas: HTMLCanvasElement,
     private data: SessionData,
+    readonly detail: Detail = 'high',
   ) {
-    this.renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: 'low-power' });
-    this.renderer.setPixelRatio(Math.min(2, window.devicePixelRatio || 1));
-    this.renderer.setClearColor(0x07090d);
-    this.scene.fog = new THREE.Fog(0x07090d, 600, 4000);
+    this.renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: detail === 'high' ? 'high-performance' : 'low-power' });
+    this.renderer.setPixelRatio(Math.min(detail === 'high' ? 2 : 1.25, window.devicePixelRatio || 1));
+    this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    this.renderer.outputColorSpace = THREE.SRGBColorSpace;
+    if (detail === 'high') {
+      this.renderer.shadowMap.enabled = true;
+      this.renderer.shadowMap.type = THREE.PCFShadowMap;
+    }
     this.scene.add(this.world);
     this.track = track3d(data);
-
-    this.scene.add(new THREE.HemisphereLight(0xbcd2ff, 0x1a1f28, 1.6));
-    const sun = new THREE.DirectionalLight(0xffffff, 1.6);
-    sun.position.set(400, 800, 300);
-    this.scene.add(sun);
+    this.env = new Environment(this.scene, this.renderer, detail === 'high');
 
     this.buildTrack();
     for (const n of data.driverOrder) this.addCar(n);
 
-    const ringGeo = new THREE.RingGeometry(3.2, 3.9, 32);
+    const ringGeo = new THREE.RingGeometry(3.3, 3.55, 48);
     ringGeo.rotateX(-Math.PI / 2);
-    this.ring = new THREE.Mesh(ringGeo, new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.85 }));
+    this.ring = new THREE.Mesh(ringGeo, new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.55 }));
     this.world.add(this.ring);
 
     this.controls = new OrbitControls(this.camera, canvas);
@@ -79,58 +100,25 @@ export class ReplayScene {
     const { pts } = this.track;
     if (pts.length < 3) return;
     const n = pts.length;
-    const pos: number[] = [];
-    const edgesL: number[] = [];
-    const edgesR: number[] = [];
-    for (let i = 0; i < n; i++) {
-      const a = pts[(i - 1 + n) % n];
-      const b = pts[(i + 1) % n];
-      let tx = b[0] - a[0];
-      let tz = b[2] - a[2];
-      const len = Math.hypot(tx, tz) || 1;
-      tx /= len;
-      tz /= len;
-      const nx = -tz * (TRACK_WIDTH / 2);
-      const nz = tx * (TRACK_WIDTH / 2);
-      const p = pts[i];
-      pos.push(p[0] + nx, p[1], p[2] + nz, p[0] - nx, p[1], p[2] - nz);
-      edgesL.push(p[0] + nx, p[1] + 0.05, p[2] + nz);
-      edgesR.push(p[0] - nx, p[1] + 0.05, p[2] - nz);
-    }
-    const idx: number[] = [];
-    for (let i = 0; i < n; i++) {
-      const j = (i + 1) % n;
-      idx.push(2 * i, 2 * j, 2 * i + 1, 2 * i + 1, 2 * j, 2 * j + 1);
-    }
-    const geo = new THREE.BufferGeometry();
-    geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
-    geo.setIndex(idx);
-    geo.computeVertexNormals();
-    const asphalt = new THREE.Mesh(geo, new THREE.MeshStandardMaterial({ color: 0x2a313c, roughness: 0.95, side: THREE.DoubleSide }));
-    this.world.add(asphalt);
-    for (const e of [edgesL, edgesR]) {
-      const g = new THREE.BufferGeometry();
-      g.setAttribute('position', new THREE.Float32BufferAttribute([...e, e[0], e[1], e[2]], 3));
-      this.world.add(new THREE.Line(g, new THREE.LineBasicMaterial({ color: 0xc9d2dd })));
+    const side = buildTrackside(this.track, this.detail);
+    this.side = side;
+    this.world.add(side.flat);
+    this.scene.add(side.upright);
+    if (this.detail === 'high') {
+      side.receivers.forEach((m) => (m.receiveShadow = true));
+      side.casters.forEach((o) => o.traverse((x) => ((x as THREE.Mesh).castShadow = true)));
     }
 
-    // Start/finish line.
-    const [p0, p1] = [pts[0], pts[1]];
-    const line = new THREE.Mesh(new THREE.PlaneGeometry(TRACK_WIDTH, 1.6), new THREE.MeshBasicMaterial({ color: 0xff4d2e, side: THREE.DoubleSide }));
-    line.rotation.x = -Math.PI / 2;
-    line.rotation.z = Math.atan2(p1[2] - p0[2], p1[0] - p0[0]) + Math.PI / 2;
-    line.position.set(p0[0], p0[1] + 0.08, p0[2]);
-    this.world.add(line);
-
-    // Ground and a faint grid, just under the lowest point.
-    const size = this.track.radius * 6;
-    const ground = new THREE.Mesh(new THREE.PlaneGeometry(size, size), new THREE.MeshStandardMaterial({ color: 0x0c1016, roughness: 1 }));
+    // Grass all around, just under the lowest point of the circuit.
+    const size = this.track.radius * 8 + 2000;
+    const grass = grassTexture();
+    grass.repeat.set(size / 40, size / 40);
+    const ground = new THREE.Mesh(new THREE.PlaneGeometry(size, size), new THREE.MeshStandardMaterial({ map: grass, roughness: 1 }));
     ground.rotation.x = -Math.PI / 2;
-    ground.position.set(this.track.centre[0], -0.6, this.track.centre[1]);
+    ground.position.set(this.track.centre[0], -0.3, this.track.centre[1]);
+    ground.receiveShadow = this.detail === 'high';
     this.scene.add(ground);
-    const grid = new THREE.GridHelper(size, Math.round(size / 100), 0x1a2230, 0x121822);
-    grid.position.set(this.track.centre[0], -0.55, this.track.centre[1]);
-    this.scene.add(grid);
+    this.ground = ground;
 
     // TV cameras: every ~350 m, set back 40 m from the outside of the track and 12 m up.
     const step = 350;
@@ -152,47 +140,27 @@ export class ReplayScene {
         nx = -nx;
         nz = -nz;
       }
-      this.tvCams.push({ pos: new THREE.Vector3(pts[i][0] + nx * 40, pts[i][1] + 12, pts[i][2] + nz * 40), idx: i });
+      this.tvCams.push({ pos: new THREE.Vector3(pts[i][0] + nx * 40, pts[i][1] + 18, pts[i][2] + nz * 40), idx: i });
     }
   }
 
   private addCar(n: number) {
     const d = this.data.drivers.get(n);
-    const colour = new THREE.Color(d?.colour ?? '#888888');
-    const body = new THREE.MeshStandardMaterial({ color: colour, roughness: 0.45, metalness: 0.3 });
-    const dark = new THREE.MeshStandardMaterial({ color: 0x111111, roughness: 0.8 });
-    const group = new THREE.Group();
-    // Pointing along +X; rotated to the heading each frame.
-    const chassis = new THREE.Mesh(new THREE.BoxGeometry(4.2, 0.55, 1.0), body);
-    chassis.position.set(0, 0.45, 0);
-    const nose = new THREE.Mesh(new THREE.ConeGeometry(0.42, 1.6, 4), body);
-    nose.rotation.z = -Math.PI / 2;
-    nose.position.set(2.8, 0.35, 0);
-    const sidepods = new THREE.Mesh(new THREE.BoxGeometry(2.0, 0.5, 1.7), body);
-    sidepods.position.set(-0.3, 0.42, 0);
-    const fw = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.08, 2.0), dark);
-    fw.position.set(3.4, 0.18, 0);
-    const rw = new THREE.Mesh(new THREE.BoxGeometry(0.45, 0.35, 1.0), body);
-    rw.position.set(-2.4, 1.05, 0);
-    const wheels = new THREE.CylinderGeometry(0.36, 0.36, 0.38, 12);
-    wheels.rotateX(Math.PI / 2);
-    for (const [x, z] of [
-      [1.8, 0.8],
-      [1.8, -0.8],
-      [-1.6, 0.8],
-      [-1.6, -0.8],
-    ]) {
-      const w = new THREE.Mesh(wheels, dark);
-      w.position.set(x, 0.36, z);
-      group.add(w);
-    }
-    group.add(chassis, nose, sidepods, fw, rw);
+    const parts = makeCar(d?.colour ?? '#888888', String(n));
+    const group = parts.group;
+    if (this.detail === 'high') parts.casters.forEach((m) => (m.castShadow = true));
     group.userData.driver = n;
     this.world.add(group);
 
     const label = makeLabel(d?.code ?? String(n), d?.colour ?? '#888');
     this.scene.add(label);
-    this.cars.set(n, { n, group, label, heading: 0, hint: -1, last: null });
+    this.cars.set(n, { n, group, parts, label, heading: 0, hint: -1, last: null, prev: null, steer: 0, compound: undefined, checkedAt: -Infinity });
+  }
+
+  /** The circuit's place on Earth, for the sun. */
+  setLocation(lat: number, lng: number) {
+    this.location = { lat, lng };
+    this.sunCheckedAt = -Infinity;
   }
 
   // ---- per frame ----------------------------------------------------------------
@@ -238,48 +206,86 @@ export class ReplayScene {
 
     this.world.scale.y = this.exaggeration;
     const up = this.exaggeration;
+    if (up !== this.appliedUp) {
+      this.side?.setUp(up);
+      if (this.ground) this.ground.position.y = -0.3;
+      this.appliedUp = up;
+    }
+    this.updateWorld(t);
+    const wet = this.env.wet;
+    const blink = wet && Math.floor(nowMs / 250) % 2 === 0;
     for (const c of this.cars.values()) {
       const p = isRetired(this.data, c.n, t) ? null : car3d(this.data, this.track, c.n, t, c.hint);
       if (!p || p.stale) {
         c.group.visible = false;
         c.label.visible = false;
         c.last = null;
+        c.prev = null;
         continue;
       }
       c.hint = p.idx;
       const pos = new THREE.Vector3(p.X, p.Y + CAR_LIFT / up, p.Z);
+      let turn = 0;
       if (c.last) {
         const dx = pos.x - c.last.x;
         const dz = pos.z - c.last.z;
         if (dx * dx + dz * dz > 0.25) {
           const target = Math.atan2(-dz, dx);
           const diff = Math.atan2(Math.sin(target - c.heading), Math.cos(target - c.heading));
-          c.heading += diff * Math.min(1, dt * 8);
+          const step = diff * Math.min(1, dt * 8);
+          c.heading += step;
+          turn = step / Math.max(0.01, Math.hypot(dx, dz)); // heading change per metre
           c.last = pos.clone();
         }
       } else c.last = pos.clone();
+
+      // Wheels: turn by the distance the car has moved (so they match any replay speed, and
+      // stop when paused); front ones steer into the corner.
+      const moved = c.prev ? Math.hypot(pos.x - c.prev.x, pos.z - c.prev.z) : 0;
+      c.prev = pos.clone();
+      // Past ~1 rad a frame the eye can't follow anyway (it would look like it's going backwards).
+      if (moved < 30) for (const w of c.parts.wheels) w.rotation.z -= Math.min(moved / WHEEL_R, 1.1);
+      c.steer += (THREE.MathUtils.clamp(turn * 3.6, -0.4, 0.4) - c.steer) * Math.min(1, dt * 6);
+      for (const s of c.parts.steer) s.rotation.y = c.steer;
+      // Tyre compound (checked about once a second of race time) and the rain light.
+      if (Math.abs(t - c.checkedAt) > 1000) {
+        c.checkedAt = t;
+        const lap = currentLap(this.data, c.n, t)?.lap ?? 1;
+        const compound = stintForLap(this.data, c.n, Math.max(1, lap))?.compound ?? null;
+        if (compound !== c.compound) {
+          c.compound = compound;
+          const mat = stripeMaterial(compound);
+          c.parts.stripes.forEach((m) => (m.material = mat));
+        }
+      }
+      setRainLight(c.parts, blink);
       c.group.visible = true;
       c.group.position.copy(pos);
       c.group.rotation.y = c.heading;
       // Cars are modelled at real size; undo the vertical exaggeration so they don't stretch.
       c.group.scale.set(1, 1 / up, 1);
-      c.label.visible = this.labels;
-      c.label.position.set(pos.x, (p.Y + 0) * up + 4.5, pos.z);
+      c.label.position.set(pos.x, p.Y * up + 2.6, pos.z);
       const dist = this.camera.position.distanceTo(c.label.position);
-      const s = Math.max(4, dist * 0.045);
+      // Labels stay a readable size on screen, and get out of the way close up.
+      c.label.visible = this.labels && dist > 12;
+      const s = THREE.MathUtils.clamp(dist * 0.028, 1.2, 60);
       c.label.scale.set(s * 1.6, s * 0.6, 1);
       (c.label.material as THREE.SpriteMaterial).opacity = c.n === this.selected || this.selected == null ? 1 : 0.75;
     }
 
     const sel = this.selected != null ? this.cars.get(this.selected) : null;
-    this.ring.visible = !!sel?.group.visible && this.mode !== 'onboard';
-    if (sel && this.mode === 'onboard') sel.label.visible = false;
+    this.ring.visible = !!sel?.group.visible && (this.mode === 'orbit' || this.mode === 'tv');
+    if (sel && (this.mode === 'onboard' || this.mode === 'follow')) sel.label.visible = false;
+    // From the driver's seat, don't show the driver's own helmet.
+    for (const c of this.cars.values()) c.parts.helmet.forEach((h) => (h.visible = !(this.mode === 'onboard' && c === sel)));
     if (sel?.group.visible) {
       this.ring.position.set(sel.group.position.x, sel.group.position.y - CAR_LIFT / up + 0.06 / up, sel.group.position.z);
       this.ring.scale.set(1, 1 / up, 1);
     }
 
     this.updateCamera(sel ?? null, dt);
+    const focus = sel?.group.visible ? sel.group.position.clone().setY(sel.group.position.y * up) : this.controls.target.clone();
+    this.env.update(focus, this.camera, dt);
     this.renderer.render(this.scene, this.camera);
   }
 
@@ -297,17 +303,27 @@ export class ReplayScene {
     const k = 1 - Math.exp(-dt * 5);
 
     if (this.mode === 'follow') {
-      const want = car.clone().addScaledVector(fwd, -14).add(new THREE.Vector3(0, 5.5, 0));
-      const look = car.clone().addScaledVector(fwd, 12).add(new THREE.Vector3(0, 1, 0));
-      this.smooth(want, look, k);
-      this.camera.fov = 60;
+      // A chase camera, low behind the car like the TV's.
+      const want = car.clone().addScaledVector(fwd, -9.5).add(new THREE.Vector3(0, 2.6, 0));
+      const look = car.clone().addScaledVector(fwd, 10).add(new THREE.Vector3(0, 0.8, 0));
+      // Locked to the car (its heading is already smoothed), so it never drops back at speed.
+      this.camPos.copy(want);
+      this.camLook.lerp(look, Math.min(1, k * 2.5));
+      if (this.camLook.distanceTo(look) > 50) this.camLook.copy(look);
+      this.camera.position.copy(this.camPos);
+      this.camera.lookAt(this.camLook);
+      this.camera.fov = 55;
     } else if (this.mode === 'onboard') {
-      const want = car.clone().addScaledVector(fwd, 1.7).add(new THREE.Vector3(0, 1.1, 0));
-      const look = car.clone().addScaledVector(fwd, 40).add(new THREE.Vector3(0, 0.6, 0));
+      // The driver's eye line: just behind the halo's front pillar, looking down the road.
+      const want = car.clone().addScaledVector(fwd, -0.2).add(new THREE.Vector3(0, 1.02, 0));
+      const look = car.clone().addScaledVector(fwd, 40).add(new THREE.Vector3(0, 0.5, 0));
+      // A little vibration at speed.
+      const shake = Math.min(1, this.speedAt(sel.n, this.lastT) / 80) * 0.006;
+      want.y += (Math.random() - 0.5) * shake;
       this.camera.position.copy(want);
       this.camLook.lerp(look, Math.min(1, dt * 12));
       this.camera.lookAt(this.camLook);
-      this.camera.fov = 68;
+      this.camera.fov = 72;
     } else {
       // TV: the trackside camera the car is approaching; it keeps the shot until the car is
       // 150 m past it, then cuts to the next one.
@@ -324,7 +340,7 @@ export class ReplayScene {
       });
       const c = this.tvCams[cam];
       if (c) {
-        const pos = new THREE.Vector3(c.pos.x, this.track.pts[c.idx][1] * up + 12, c.pos.z);
+        const pos = new THREE.Vector3(c.pos.x, this.track.pts[c.idx][1] * up + 18, c.pos.z);
         this.camera.position.copy(pos);
         this.camera.lookAt(car);
         const dist = pos.distanceTo(car);
@@ -332,6 +348,39 @@ export class ReplayScene {
       }
     }
     this.camera.updateProjectionMatrix();
+  }
+
+  private lastT = 0;
+
+  /** Speed in m/s from the car data (0 if there isn't any). */
+  private speedAt(n: number, t: number) {
+    const s = this.data.samples.get(n);
+    if (!s || !s.carT.length) return 0;
+    const i = lastAtOrBefore(s.carT, t);
+    return i >= 0 && t - s.carT[i] < 3000 ? s.speed[i] / 3.6 : 0;
+  }
+
+  /** Sun (every ~30 s of race time), rain (every ~5 s) and the start lights. */
+  private updateWorld(t: number) {
+    this.lastT = t;
+    if (this.location && Math.abs(t - this.sunCheckedAt) > 30_000) {
+      this.sunCheckedAt = t;
+      const { altitude, azimuth } = sunPosition(this.data.meta.t0 + t, this.location.lat, this.location.lng);
+      this.env.setSun(altitude, azimuth);
+      this.side?.setNight(this.env.night);
+    }
+    if (this.side && Math.abs(t - this.weatherCheckedAt) > 5000) {
+      this.weatherCheckedAt = t;
+      const w = weatherAt(this.data, t);
+      this.env.setWet(!!w?.rain, this.side.asphalt);
+    }
+    // Start lights: one pair a second for five seconds, then all out at the start.
+    const start = this.data.meta.raceStart;
+    const lit = this.data.meta.session.type === 'Race' && t >= start - 5000 && t < start ? Math.min(5, Math.floor((t - (start - 5000)) / 1000) + 1) : 0;
+    if (lit !== this.lightsLit) {
+      this.lightsLit = lit;
+      this.side?.setStartLights(lit);
+    }
   }
 
   private smooth(pos: THREE.Vector3, look: THREE.Vector3, k: number) {
@@ -346,6 +395,7 @@ export class ReplayScene {
   }
 
   dispose() {
+    this.env.dispose();
     this.controls.dispose();
     this.renderer.dispose();
     this.scene.traverse((o) => {

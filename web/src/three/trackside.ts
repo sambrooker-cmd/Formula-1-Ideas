@@ -130,9 +130,9 @@ const fenceTexture = () =>
     64,
     (ctx) => {
       ctx.clearRect(0, 0, 64, 64);
-      ctx.strokeStyle = 'rgba(180,186,195,0.9)';
-      ctx.lineWidth = 1.2;
-      for (let i = -64; i < 128; i += 8) {
+      ctx.strokeStyle = 'rgba(170,176,186,0.75)';
+      ctx.lineWidth = 0.8;
+      for (let i = -64; i < 128; i += 6) {
         ctx.beginPath();
         ctx.moveTo(i, 0);
         ctx.lineTo(i + 64, 64);
@@ -181,16 +181,17 @@ function frames(track: Track3D): Frame[] {
     const tx = b[0] - a[0];
     const tz = b[2] - a[2];
     const len = Math.hypot(tx, tz) || 1;
-    // Curvature over about ±12 m.
-    let k1 = i;
-    let k2 = i;
-    while (k1 > i - 30 && Math.abs(dist[i] - dist[(k1 - 1 + n) % n]) < 12) k1--;
-    while (k2 < i + 30 && Math.abs(dist[(k2 + 1) % n] - dist[i]) < 12) k2++;
+    // Curvature over about ±12 m (at least one point either side).
+    const along = (a: number, b: number) => ((dist[b % n] - dist[(a + n) % n]) % track.length + track.length) % track.length;
+    let k1 = i - 1;
+    let k2 = i + 1;
+    while (k1 > i - 30 && along(k1 - 1, i) < 12) k1--;
+    while (k2 < i + 30 && along(i, k2 + 1) < 12) k2++;
     const h1 = heading((k1 + n) % n, i);
     const h2 = heading(i, k2 % n);
     let dh = h2 - h1;
     dh = Math.atan2(Math.sin(dh), Math.cos(dh));
-    const span = Math.max(1, Math.abs(dist[k2 % n] - dist[(k1 + n) % n]) || 24);
+    const span = Math.max(1, along(k1, k2));
     // Z points south, so a positive change in this heading is a right turn: flip for "left = +".
     out.push({ nx: tz / len, nz: -tx / len, curv: -dh / span });
   }
@@ -415,7 +416,7 @@ export function buildTrackside(track: Track3D, detail: 'high' | 'standard'): Tra
   // Barriers: blue-and-white walls with catch fencing above, set back from the track. Where
   // another part of the circuit runs close by, the wall is left out rather than cutting across.
   const barrierMat = new THREE.MeshStandardMaterial({ map: barrierTexture(), roughness: 0.8 });
-  const fenceMat = new THREE.MeshStandardMaterial({ map: fenceTexture(), transparent: true, alphaTest: 0.3, side: THREE.DoubleSide, roughness: 0.6, metalness: 0.4 });
+  const fenceMat = new THREE.MeshStandardMaterial({ map: fenceTexture(), transparent: true, alphaTest: 0.2, opacity: 0.8, side: THREE.DoubleSide, roughness: 0.6, metalness: 0.4 });
   const barrierGeos: THREE.BufferGeometry[] = [];
   const fenceGeos: THREE.BufferGeometry[] = [];
   const wallBase: number[] = [];

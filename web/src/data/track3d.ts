@@ -56,7 +56,9 @@ export function track3d(data: SessionData): Track3D {
     return sum / 7;
   });
   const zBase = raw.length ? Math.min(...raw) : 0;
-  const pts = outline.map(([x, y], i) => [x / 10, (raw[i] - zBase) / 10, -y / 10] as [number, number, number]);
+  // The outline's points can be 40 m apart: smooth it into a curve with a point every ~4 m,
+  // so corners are round rather than faceted.
+  const pts = resample(outline.map(([x, y], i) => [x / 10, (raw[i] - zBase) / 10, -y / 10] as [number, number, number]), 4);
   const dist = [0];
   for (let i = 1; i < pts.length; i++) dist.push(dist[i - 1] + Math.hypot(pts[i][0] - pts[i - 1][0], pts[i][2] - pts[i - 1][2]));
   const xs = pts.map((p) => p[0]);
@@ -127,4 +129,33 @@ export function car3d(data: SessionData, track: Track3D, n: number, t: number, h
     }
   }
   return { X, Y, Z, stale: p.stale, idx };
+}
+
+type P3 = [number, number, number];
+
+/** A closed Catmull-Rom curve through the points, sampled every ~`step` metres. */
+function resample(pts: P3[], step: number): P3[] {
+  const n = pts.length;
+  if (n < 4) return pts;
+  // Drop a repeated closing point, if any.
+  const last = pts[n - 1];
+  const loop = Math.hypot(last[0] - pts[0][0], last[2] - pts[0][2]) < 1 ? pts.slice(0, -1) : pts;
+  const m = loop.length;
+  const out: P3[] = [];
+  for (let i = 0; i < m; i++) {
+    const p0 = loop[(i - 1 + m) % m];
+    const p1 = loop[i];
+    const p2 = loop[(i + 1) % m];
+    const p3 = loop[(i + 2) % m];
+    const seg = Math.hypot(p2[0] - p1[0], p2[2] - p1[2]);
+    const k = Math.max(1, Math.round(seg / step));
+    for (let j = 0; j < k; j++) {
+      const t = j / k;
+      const t2 = t * t;
+      const t3 = t2 * t;
+      const f = (a: number, b: number, c: number, d: number) => 0.5 * (2 * b + (-a + c) * t + (2 * a - 5 * b + 4 * c - d) * t2 + (-a + 3 * b - 3 * c + d) * t3);
+      out.push([f(p0[0], p1[0], p2[0], p3[0]), f(p0[1], p1[1], p2[1], p3[1]), f(p0[2], p1[2], p2[2], p3[2])]);
+    }
+  }
+  return out;
 }

@@ -5,7 +5,8 @@ import type { SessionData } from '../data/session';
 import { tower } from '../data/state';
 import { clock, getState, now } from '../sync/clock';
 import { useNow, useSynced } from '../hooks';
-import { ReplayScene, type CameraMode } from './scene';
+import { ReplayScene, type CameraMode, type Detail } from './scene';
+import { seasonHistory } from '../data/history';
 import { track3d } from '../data/track3d';
 
 const MODES: { id: CameraMode; label: string; title: string }[] = [
@@ -38,7 +39,9 @@ export default function Replay3D({ data }: { data: SessionData }) {
   const { selected } = useSynced();
   const t = useNow(3);
   const [mode, setMode] = useState<CameraMode>(() => saved('mode', 'follow'));
-  const [exag, setExag] = useState<number>(() => saved('exaggeration', 3));
+  const [exag, setExag] = useState<number>(() => saved('exaggeration', 1));
+  // High detail (shadows, more trees, sharper) by default, except on phones and tablets.
+  const [detail, setDetail] = useState<Detail>(() => saved('detail', navigator.maxTouchPoints > 1 ? 'standard' : 'high'));
   const [labels, setLabels] = useState<boolean>(() => saved('labels', true));
   const [smooth, setSmooth] = useState<boolean>(() => saved('smooth', false));
   const [error, setError] = useState('');
@@ -51,12 +54,20 @@ export default function Replay3D({ data }: { data: SessionData }) {
     const canvas = canvasRef.current!;
     let scene: ReplayScene;
     try {
-      scene = new ReplayScene(canvas, data);
+      scene = new ReplayScene(canvas, data, detail);
     } catch (e) {
       setError(`3D isn't available in this browser (${(e as Error).message}).`);
       return;
     }
     sceneRef.current = scene;
+    // Where on Earth, for the sun: the calendar's circuit for this weekend.
+    const date = new Date(data.meta.t0 + 2 * 3600e3).toISOString().slice(0, 10);
+    seasonHistory(data.meta.session.year)
+      .then((h) => {
+        const r = h.races.find((x) => Math.abs(Date.parse(x.date) - Date.parse(date)) <= 4 * 86_400e3);
+        if (r && Number.isFinite(r.lat) && Number.isFinite(r.lng) && sceneRef.current === scene) scene.setLocation(r.lat, r.lng);
+      })
+      .catch(() => undefined);
     const host = hostRef.current!;
     const ro = new ResizeObserver(([e]) => scene.resize(e.contentRect.width, e.contentRect.height));
     ro.observe(host);
@@ -75,7 +86,7 @@ export default function Replay3D({ data }: { data: SessionData }) {
       scene.dispose();
       sceneRef.current = null;
     };
-  }, [data]);
+  }, [data, detail]);
 
   useEffect(() => {
     const s = sceneRef.current;
@@ -83,8 +94,8 @@ export default function Replay3D({ data }: { data: SessionData }) {
     s.selected = focus;
     s.exaggeration = exag;
     s.labels = labels;
-    if (s.mode !== mode) s.setMode(mode);
-  }, [focus, exag, labels, mode]);
+    if (s.mode !== mode || s.controls.enabled !== (mode === 'orbit')) s.setMode(mode);
+  }, [focus, exag, labels, mode, detail]);
 
   const choose = (m: CameraMode) => {
     setMode(m);
@@ -151,6 +162,18 @@ export default function Replay3D({ data }: { data: SessionData }) {
             }}
           />
           Smooth
+        </label>
+        <label className="r3d-check" title="Shadows, more trees and a sharper picture. Turn off if it's slow (it starts off on iPads).">
+          <input
+            type="checkbox"
+            checked={detail === 'high'}
+            onChange={(e) => {
+              const d = e.target.checked ? 'high' : 'standard';
+              setDetail(d);
+              save('detail', d);
+            }}
+          />
+          High detail
         </label>
       </div>
       <div className="r3d-board">
