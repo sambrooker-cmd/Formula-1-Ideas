@@ -11,8 +11,11 @@ import { carPose } from '../data/carpath';
 import { makeCar, setRainLight, stripeMaterial, WHEEL_R, type CarParts } from './carModel';
 import { buildTrackside, grassTexture, isStreetCircuit, pavementTexture, type Trackside } from './trackside';
 import { Environment, sunPosition } from './environment';
+import { Director } from './director';
 
-export type CameraMode = 'orbit' | 'follow' | 'onboard' | 'tv';
+export type CameraMode = 'orbit' | 'follow' | 'onboard' | 'tv' | 'director';
+/** What the camera is actually doing (the director picks one of these, plus a helicopter shot). */
+type Shot = 'orbit' | 'follow' | 'onboard' | 'tv' | 'heli';
 
 /** The car model's ground is at y = 0; positions are lifted this little bit to sit on the road. */
 const CAR_LIFT = 0.02;
@@ -55,6 +58,10 @@ export class ReplayScene {
   needsRender = true;
   private raycaster = new THREE.Raycaster();
   private env: Environment;
+  private director: Director;
+  /** What the director is showing (for the caption), when directing. */
+  directorCaption: string | null = null;
+  private shot: Shot = 'follow';
   private side: Trackside | null = null;
   private ground: THREE.Mesh | null = null;
   private appliedUp = -1;
@@ -79,6 +86,7 @@ export class ReplayScene {
     this.scene.add(this.world);
     this.track = track3d(data);
     this.env = new Environment(this.scene, this.renderer, detail === 'high');
+    this.director = new Director(data);
 
     this.buildTrack();
     for (const n of data.driverOrder) this.addCar(n);
@@ -287,11 +295,23 @@ export class ReplayScene {
       (c.label.material as THREE.SpriteMaterial).opacity = c.n === this.selected || this.selected == null ? 1 : 0.75;
     }
 
-    const sel = this.selected != null ? this.cars.get(this.selected) : null;
-    this.ring.visible = !!sel?.group.visible && (this.mode === 'orbit' || this.mode === 'tv');
-    if (sel && (this.mode === 'onboard' || this.mode === 'follow')) sel.label.visible = false;
+    // Who and how: the viewer's choice, or the director's.
+    let subject = this.selected;
+    this.shot = this.mode === 'director' ? 'tv' : this.mode;
+    this.directorCaption = null;
+    if (this.mode === 'director') {
+      const d = this.director.update(t, nowMs);
+      if (d) {
+        subject = d.subject;
+        this.shot = d.shot;
+        this.directorCaption = d.caption;
+      }
+    }
+    const sel = subject != null ? this.cars.get(subject) : null;
+    this.ring.visible = !!sel?.group.visible && (this.shot === 'orbit' || (this.shot === 'tv' && this.mode !== 'director'));
+    if (sel && (this.shot === 'onboard' || this.shot === 'follow')) sel.label.visible = false;
     // From the driver's seat, don't show the driver's own helmet.
-    for (const c of this.cars.values()) c.parts.helmet.forEach((h) => (h.visible = !(this.mode === 'onboard' && c === sel)));
+    for (const c of this.cars.values()) c.parts.helmet.forEach((h) => (h.visible = !(this.shot === 'onboard' && c === sel)));
     if (sel?.group.visible) {
       this.ring.position.set(sel.group.position.x, sel.group.position.y - CAR_LIFT / up + 0.06 / up, sel.group.position.z);
       this.ring.scale.set(1, 1 / up, 1);
@@ -305,7 +325,7 @@ export class ReplayScene {
 
   private updateCamera(sel: CarObj | null, dt: number) {
     const up = this.exaggeration;
-    if (this.mode === 'orbit' || !sel || !sel.group.visible) {
+    if (this.shot === 'orbit' || !sel || !sel.group.visible) {
       this.camera.fov = 50;
       this.camera.updateProjectionMatrix();
       this.controls.update();
@@ -316,7 +336,7 @@ export class ReplayScene {
     const fwd = new THREE.Vector3(Math.cos(sel.heading), 0, -Math.sin(sel.heading));
     const k = 1 - Math.exp(-dt * 5);
 
-    if (this.mode === 'follow') {
+    if (this.shot === 'follow') {
       // A chase camera, low behind the car like the TV's.
       const want = car.clone().addScaledVector(fwd, -9.5).add(new THREE.Vector3(0, 2.6, 0));
       const look = car.clone().addScaledVector(fwd, 10).add(new THREE.Vector3(0, 0.8, 0));
@@ -327,7 +347,15 @@ export class ReplayScene {
       this.camera.position.copy(this.camPos);
       this.camera.lookAt(this.camLook);
       this.camera.fov = 55;
-    } else if (this.mode === 'onboard') {
+    } else if (this.shot === 'heli') {
+      // Helicopter: high above and behind, circling slowly.
+      const a = performance.now() / 9000;
+      const want = car.clone().add(new THREE.Vector3(Math.cos(a) * 45, 38, Math.sin(a) * 45)).addScaledVector(fwd, -25);
+      this.camPos.lerp(want, this.camPos.distanceTo(want) > 150 ? 1 : k);
+      this.camera.position.copy(this.camPos);
+      this.camera.lookAt(car);
+      this.camera.fov = 45;
+    } else if (this.shot === 'onboard') {
       // The driver's eye line: just behind the halo's front pillar, looking down the road.
       const want = car.clone().addScaledVector(fwd, -0.2).add(new THREE.Vector3(0, 1.02, 0));
       const look = car.clone().addScaledVector(fwd, 40).add(new THREE.Vector3(0, 0.5, 0));

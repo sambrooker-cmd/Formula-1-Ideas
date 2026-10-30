@@ -2884,3 +2884,4 @@ a {
 }
 .analysis-page { min-width: 0; max-width: 100%; }
 .panel-head .tabs { flex: 0 1 auto; min-width: 0; }
+.r3d-caption { position: absolute; top: 58px; left: 50%; transform: translateX(-50%); background: rgba(7, 9, 13, 0.82); border: 1px solid var(--line-2); border-radius: 8px; padding: 6px 14px; font-size: 14px; font-weight: 600; white-space: nowrap; pointer-events: none; }

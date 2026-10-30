@@ -10,6 +10,7 @@ import { seasonHistory } from '../data/history';
 import { track3d } from '../data/track3d';
 
 const MODES: { id: CameraMode; label: string; title: string }[] = [
+  { id: 'director', label: '🎬 Director', title: 'Sit back: it finds the best action (fights, passes, pit stops) and cuts between cameras for you' },
   { id: 'follow', label: 'Follow', title: 'Behind the selected car' },
   { id: 'onboard', label: 'On-board', title: 'From the cockpit of the selected car' },
   { id: 'tv', label: 'TV', title: 'Trackside cameras that cut as the selected car passes' },
@@ -120,7 +121,14 @@ export default function Replay3D({ data }: { data: SessionData }) {
             </button>
           ))}
         </span>
-        <select className="lap-jump" value={focus ?? ''} onChange={(e) => clock.setSelected([Number(e.target.value)])} aria-label="Car to follow">
+        <select
+          className="lap-jump"
+          value={focus ?? ''}
+          disabled={mode === 'director'}
+          title={mode === 'director' ? 'The director chooses who to follow' : undefined}
+          onChange={(e) => clock.setSelected([Number(e.target.value)])}
+          aria-label="Car to follow"
+        >
           {data.driverOrder.map((n) => (
             <option key={n} value={n}>
               {data.drivers.get(n)?.code}
@@ -189,6 +197,7 @@ export default function Replay3D({ data }: { data: SessionData }) {
           );
         })}
       </div>
+      {mode === 'director' && sceneRef.current?.directorCaption && <div className="r3d-caption">🎬 {sceneRef.current.directorCaption}</div>}
       {(!track.hasHeight || data.meta.positionsEstimated) && (
         <div className="r3d-note">
           {data.meta.positionsEstimated
