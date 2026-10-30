@@ -5,8 +5,9 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import type { SessionData } from '../data/session';
-import { currentLap, isRetired, lastAtOrBefore, stintForLap, weatherAt } from '../data/state';
-import { car3d, track3d, type Track3D } from '../data/track3d';
+import { currentLap, isRetired, stintForLap, weatherAt } from '../data/state';
+import { track3d, type Track3D } from '../data/track3d';
+import { carPose } from '../data/carpath';
 import { makeCar, setRainLight, stripeMaterial, WHEEL_R, type CarParts } from './carModel';
 import { buildTrackside, grassTexture, TRACK_WIDTH, type Trackside } from './trackside';
 import { Environment, sunPosition } from './environment';
@@ -25,7 +26,6 @@ interface CarObj {
   label: THREE.Sprite;
   heading: number;
   hint: number;
-  last: THREE.Vector3 | null;
   prev: THREE.Vector3 | null;
   steer: number;
   compound: string | null | undefined;
@@ -49,6 +49,10 @@ export class ReplayScene {
   private camPos = new THREE.Vector3();
   private camLook = new THREE.Vector3();
   private lastFrame = 0;
+  private lastRenderT = NaN;
+  private lastState = '';
+  /** Set when something changed that the next frame must draw (camera dragged, etc.). */
+  needsRender = true;
   private raycaster = new THREE.Raycaster();
   private env: Environment;
   private side: Trackside | null = null;
@@ -86,6 +90,7 @@ export class ReplayScene {
 
     this.controls = new OrbitControls(this.camera, canvas);
     this.controls.enableDamping = true;
+    this.controls.addEventListener('change', () => (this.needsRender = true));
     this.controls.maxPolarAngle = Math.PI * 0.49;
     const [cx, cz] = this.track.centre;
     this.controls.target.set(cx, 0, cz);
@@ -154,7 +159,7 @@ export class ReplayScene {
 
     const label = makeLabel(d?.code ?? String(n), d?.colour ?? '#888');
     this.scene.add(label);
-    this.cars.set(n, { n, group, parts, label, heading: 0, hint: -1, last: null, prev: null, steer: 0, compound: undefined, checkedAt: -Infinity });
+    this.cars.set(n, { n, group, parts, label, heading: 0, hint: -1, prev: null, steer: 0, compound: undefined, checkedAt: -Infinity });
   }
 
   /** The circuit's place on Earth, for the sun. */
@@ -201,6 +206,13 @@ export class ReplayScene {
   frame(t: number, maxFps: number) {
     const nowMs = performance.now();
     if (nowMs - this.lastFrame < 1000 / maxFps - 2) return;
+    // Nothing to draw when paused and nobody's touching anything: save the battery.
+    if (this.mode === 'orbit' && this.controls.update()) this.needsRender = true;
+    const state = `${this.selected}|${this.exaggeration}|${this.labels}|${this.mode}|${this.canvas.width}x${this.canvas.height}`;
+    if (t === this.lastRenderT && !this.needsRender && state === this.lastState && !this.env.wet) return;
+    this.lastRenderT = t;
+    this.lastState = state;
+    this.needsRender = false;
     const dt = Math.min(0.2, (nowMs - this.lastFrame) / 1000);
     this.lastFrame = nowMs;
 
@@ -215,37 +227,36 @@ export class ReplayScene {
     const wet = this.env.wet;
     const blink = wet && Math.floor(nowMs / 250) % 2 === 0;
     for (const c of this.cars.values()) {
-      const p = isRetired(this.data, c.n, t) ? null : car3d(this.data, this.track, c.n, t, c.hint);
+      const p = isRetired(this.data, c.n, t) ? null : carPose(this.data, this.track, c.n, t);
       if (!p || p.stale) {
         c.group.visible = false;
         c.label.visible = false;
-        c.last = null;
         c.prev = null;
         continue;
       }
       c.hint = p.idx;
-      const pos = new THREE.Vector3(p.X, p.Y + CAR_LIFT / up, p.Z);
-      let turn = 0;
-      if (c.last) {
-        const dx = pos.x - c.last.x;
-        const dz = pos.z - c.last.z;
-        if (dx * dx + dz * dz > 0.25) {
-          const target = Math.atan2(-dz, dx);
-          const diff = Math.atan2(Math.sin(target - c.heading), Math.cos(target - c.heading));
-          const step = diff * Math.min(1, dt * 8);
-          c.heading += step;
-          turn = step / Math.max(0.01, Math.hypot(dx, dz)); // heading change per metre
-          c.last = pos.clone();
-        }
-      } else c.last = pos.clone();
+      const px = p.X;
+      const py = p.Y + CAR_LIFT / up;
+      const pz = p.Z;
+      // The smoothed path gives the heading directly; ease into it only after a jump (seeking).
+      const diff = Math.atan2(Math.sin(p.heading - c.heading), Math.cos(p.heading - c.heading));
+      c.heading = Math.abs(diff) > 0.6 ? p.heading : c.heading + diff * Math.min(1, dt * 20);
 
       // Wheels: turn by the distance the car has moved (so they match any replay speed, and
-      // stop when paused); front ones steer into the corner.
-      const moved = c.prev ? Math.hypot(pos.x - c.prev.x, pos.z - c.prev.z) : 0;
-      c.prev = pos.clone();
+      // stop when paused); front ones steer by how sharply the path is curving.
+      const moved = c.prev ? Math.hypot(px - c.prev.x, pz - c.prev.z) : 0;
+      if (c.prev) c.prev.set(px, py, pz);
+      else c.prev = new THREE.Vector3(px, py, pz);
       // Past ~1 rad a frame the eye can't follow anyway (it would look like it's going backwards).
       if (moved < 30) for (const w of c.parts.wheels) w.rotation.z -= Math.min(moved / WHEEL_R, 1.1);
-      c.steer += (THREE.MathUtils.clamp(turn * 3.6, -0.4, 0.4) - c.steer) * Math.min(1, dt * 6);
+      const ahead = carPose(this.data, this.track, c.n, t + 250);
+      let steer = 0;
+      if (ahead && !ahead.stale) {
+        const ds = Math.hypot(ahead.X - px, ahead.Z - pz);
+        const dh = Math.atan2(Math.sin(ahead.heading - p.heading), Math.cos(ahead.heading - p.heading));
+        if (ds > 0.5) steer = THREE.MathUtils.clamp(Math.atan((dh / ds) * 3.6), -0.45, 0.45); // wheelbase × curvature
+      }
+      c.steer += (steer - c.steer) * Math.min(1, dt * 10);
       for (const s of c.parts.steer) s.rotation.y = c.steer;
       // Tyre compound (checked about once a second of race time) and the rain light.
       if (Math.abs(t - c.checkedAt) > 1000) {
@@ -260,15 +271,16 @@ export class ReplayScene {
       }
       setRainLight(c.parts, blink);
       c.group.visible = true;
-      c.group.position.copy(pos);
+      c.group.position.set(px, py, pz);
       c.group.rotation.y = c.heading;
       // Cars are modelled at real size; undo the vertical exaggeration so they don't stretch.
       c.group.scale.set(1, 1 / up, 1);
-      c.label.position.set(pos.x, p.Y * up + 2.6, pos.z);
+      c.label.position.set(px, p.Y * up + 2.6, pz);
       const dist = this.camera.position.distanceTo(c.label.position);
       // Labels stay a readable size on screen, and get out of the way close up.
       c.label.visible = this.labels && dist > 12;
-      const s = THREE.MathUtils.clamp(dist * 0.028, 1.2, 60);
+      // Constant size on screen, whatever the zoom (TV cameras zoom right in).
+      const s = THREE.MathUtils.clamp(dist * Math.tan(THREE.MathUtils.degToRad(this.camera.fov / 2)) * 0.09, 0.6, 60);
       c.label.scale.set(s * 1.6, s * 0.6, 1);
       (c.label.material as THREE.SpriteMaterial).opacity = c.n === this.selected || this.selected == null ? 1 : 0.75;
     }
@@ -317,9 +329,6 @@ export class ReplayScene {
       // The driver's eye line: just behind the halo's front pillar, looking down the road.
       const want = car.clone().addScaledVector(fwd, -0.2).add(new THREE.Vector3(0, 1.02, 0));
       const look = car.clone().addScaledVector(fwd, 40).add(new THREE.Vector3(0, 0.5, 0));
-      // A little vibration at speed.
-      const shake = Math.min(1, this.speedAt(sel.n, this.lastT) / 80) * 0.006;
-      want.y += (Math.random() - 0.5) * shake;
       this.camera.position.copy(want);
       this.camLook.lerp(look, Math.min(1, dt * 12));
       this.camera.lookAt(this.camLook);
@@ -351,14 +360,6 @@ export class ReplayScene {
   }
 
   private lastT = 0;
-
-  /** Speed in m/s from the car data (0 if there isn't any). */
-  private speedAt(n: number, t: number) {
-    const s = this.data.samples.get(n);
-    if (!s || !s.carT.length) return 0;
-    const i = lastAtOrBefore(s.carT, t);
-    return i >= 0 && t - s.carT[i] < 3000 ? s.speed[i] / 3.6 : 0;
-  }
 
   /** Sun (every ~30 s of race time), rain (every ~5 s) and the start lights. */
   private updateWorld(t: number) {
@@ -398,12 +399,17 @@ export class ReplayScene {
     this.env.dispose();
     this.controls.dispose();
     this.renderer.dispose();
+    // Free everything on the graphics card, textures included (switching detail rebuilds the scene).
+    const free = (mat: THREE.Material) => {
+      for (const v of Object.values(mat)) if (v instanceof THREE.Texture) v.dispose();
+      mat.dispose();
+    };
     this.scene.traverse((o) => {
       const m = o as THREE.Mesh;
       m.geometry?.dispose?.();
       const mat = m.material as THREE.Material | THREE.Material[] | undefined;
-      if (Array.isArray(mat)) mat.forEach((x) => x.dispose());
-      else mat?.dispose?.();
+      if (Array.isArray(mat)) mat.forEach(free);
+      else if (mat) free(mat);
     });
   }
 }

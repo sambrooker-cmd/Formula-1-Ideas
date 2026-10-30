@@ -32,6 +32,17 @@ test('a real race: moments, commentary, ratings, predictor and the 3D track', { 
   const passes = replayPasses(d).length;
   assert.ok(passes > 40 && passes < 85, `passes ${passes}`);
   const t = track3d(d);
+  // 3D: cars move smoothly (no jumps from the uneven sample timing), including through the pits.
+  const { carPose } = await import('../web/src/data/carpath.ts');
+  const pit = d.pits.get(1)![0];
+  let worst = 0;
+  let prev: { X: number; Z: number } | null = null;
+  for (let ms = pit.t - 30_000; ms < pit.t + 40_000; ms += 1000 / 60) {
+    const p = carPose(d, t, 1, ms)!;
+    if (prev) worst = Math.max(worst, Math.hypot(p.X - prev.X, p.Z - prev.Z));
+    prev = p;
+  }
+  assert.ok(worst < 2.5, `largest move in one frame ${worst.toFixed(2)} m`);
   assert.ok(t.pts.length > 800, 'outline smoothed into a fine curve');
   assert.ok(Math.abs(t.length - 5280) < 300, `lap length ${t.length}`);
 });

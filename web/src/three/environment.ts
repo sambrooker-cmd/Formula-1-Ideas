@@ -115,7 +115,8 @@ export class Environment {
     this.renderer.toneMappingExposure = this.night ? 0.9 : 0.42 + 0.2 * (1 - day);
 
     // Reflections in the paint come from the sky itself (redone only when the sun has moved).
-    if (Math.abs(deg - this.lastAlt) > 1.5) {
+    // (Rebuilding reflections takes a moment, so only for a real change of light.)
+    if (Math.abs(deg - this.lastAlt) > 4 || (this.night && this.lastAlt > -4) || (!this.night && this.lastAlt < -4)) {
       this.lastAlt = deg;
       const envScene = new THREE.Scene();
       if (this.night) envScene.background = new THREE.Color(0x101624);
