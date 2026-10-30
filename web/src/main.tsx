@@ -24,6 +24,7 @@ import { ReplayGate, WatchedMarker } from './components/Spoilers';
 import { Commentary } from './components/Commentary';
 import { TeamRadio } from './components/TeamRadio';
 import { openMiniWindow, Strip } from './components/Strip';
+import { AllViewsButton } from './components/AllViews';
 
 // three.js is big: only load it when the 3D page is opened.
 const Replay3D = lazy(() => import('./three/Replay3D'));
@@ -190,6 +191,7 @@ function TopBar({ data }: { data?: SessionData }) {
           📰 Report
         </a>
       )}
+      <AllViewsButton />
       <a className="icon-btn" href="/" style={{ textDecoration: 'none' }}>
         Sessions & layouts
       </a>
@@ -338,7 +340,9 @@ function App() {
             <>
               <TopBar data={data} />
               <div className="report-scroll">
-                <RaceReport data={data} />
+                <ReplayGate data={data} what="The report">
+                  <RaceReport data={data} />
+                </ReplayGate>
               </div>
             </>
           )}

@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState, useSyncExternalStore } from 'react';
 import { clock, getLink, now, subscribeLink, wallNow } from '../sync/clock';
 import { useNow, useSynced } from '../hooks';
+import { useSpoilers } from '../spoilers';
 import type { SessionData, TrackStatusKind } from '../data/session';
 import { AlertToggles } from './Alerts';
 import { HOSTED } from '../env';
@@ -70,16 +71,19 @@ export function PlaybackBar({ data, compact = false }: { data: SessionData; comp
     return () => window.removeEventListener('keydown', onKey);
   }, []);
 
+  // In spoiler-free mode, Safety Cars and red flags still to come aren't marked.
+  const { on: spoilerFree } = useSpoilers();
+  const shownUntil = spoilerFree && !data.live ? Math.floor(t / 10_000) * 10_000 : Infinity;
   const bands = useMemo(() => {
     const out: { left: number; width: number; colour: string }[] = [];
     data.trackStatus.forEach((s, i) => {
       const colour = BAND_COLOUR[s.status];
-      if (!colour) return;
-      const until = data.trackStatus[i + 1]?.t ?? end;
+      if (!colour || s.t > shownUntil) return;
+      const until = Math.min(data.trackStatus[i + 1]?.t ?? end, shownUntil);
       out.push({ left: ((s.t - start) / span) * 100, width: ((until - s.t) / span) * 100, colour });
     });
     return out;
-  }, [data, start, end, span]);
+  }, [data, start, end, span, shownUntil]);
 
   const lapMarks = useMemo(
     () => data.lapStartTimes.map((lt, n) => (lt != null && n % 5 === 0 ? ((lt - start) / span) * 100 : null)).filter((x) => x != null),

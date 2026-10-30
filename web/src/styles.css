@@ -2859,3 +2859,16 @@ a {
 .era-num { display: block; font-size: 40px; font-weight: 800; line-height: 1; font-variant-numeric: tabular-nums; }
 .spoiler-cover { align-self: flex-start; height: auto; display: flex; flex-direction: column; gap: 12px; align-items: center; text-align: center; padding: 40px 20px; border: 1px dashed var(--line-2); border-radius: 12px; color: var(--muted); max-width: 640px; margin: 20px auto; }
 .spoiler-cover b { color: var(--text); }
+.views-overlay { position: fixed; inset: 0; z-index: 100; background: rgba(4, 6, 10, 0.72); display: flex; justify-content: center; align-items: flex-start; padding: 40px 16px; overflow-y: auto; }
+.views-panel { background: var(--panel); border: 1px solid var(--line-2); border-radius: 14px; padding: 18px 20px; width: min(1100px, 100%); box-shadow: 0 20px 60px rgba(0, 0, 0, 0.6); }
+.views-head { display: flex; gap: 12px; align-items: center; margin-bottom: 12px; }
+.views-head .search { max-width: 360px; }
+.views-groups h3 { margin: 14px 0 8px; font-size: 12px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); }
+.views-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 8px; }
+.view-card { display: flex; flex-direction: column; gap: 3px; padding: 10px 12px; border: 1px solid var(--line); border-radius: 9px; background: var(--panel-2); color: var(--text); text-decoration: none; font-size: 13px; }
+.view-card .muted { font-size: 12px; line-height: 1.35; }
+.view-card:hover { border-color: var(--accent); }
+.view-card.disabled { opacity: 0.45; cursor: default; }
+.view-card.disabled:hover { border-color: var(--line); }
+.card.tips ul { margin: 8px 0 0; padding-left: 18px; color: var(--muted); line-height: 1.6; }
+.card.tips b { color: var(--text); }

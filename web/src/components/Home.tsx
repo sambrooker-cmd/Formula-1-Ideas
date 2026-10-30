@@ -5,6 +5,7 @@ import { captureLayout, openLayout, PANEL_ROUTES, PRESETS, savedLayouts, saveLay
 import { Footer } from './Footer';
 import { HOSTED } from '../env';
 import { NotificationsCard } from './Notifications';
+import { AllViewsButton } from './AllViews';
 import { SpoilerGate, SpoilerToggle } from './Spoilers';
 import { raceId, useSpoilers } from '../spoilers';
 import { hostedLiveStatus, startHostedLive, subscribeHostedLive } from '../live/hostedLive';
@@ -74,11 +75,14 @@ export function Home() {
     <div className="home">
       <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
         <span className="brand-mark" style={{ width: 14, height: 30 }} />
-        <div>
+        <div style={{ flex: 1 }}>
           <h1>Pit Wall</h1>
           <div className="muted">Race replays from real timing and telemetry, across as many windows and screens as you like.</div>
         </div>
+        <AllViewsButton />
       </div>
+
+      <TipsCard />
 
       <SeasonCard
         jobs={jobs}
@@ -93,8 +97,6 @@ export function Home() {
           setJobs((prev) => [...prev, job]);
         }}
       />
-
-      <ExploreCard />
 
       <section className="card">
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
@@ -164,11 +166,13 @@ export function Home() {
 
       {!HOSTED ? <LiveCard cached={cached} /> : <HostedLiveCard />}
 
+      <ExploreCard />
+
+      <LayoutsCard hasSession={sessionKey != null} />
+
       {HOSTED && <NotificationsCard />}
 
       {!HOSTED && <IngestCard jobs={jobs} onStarted={(j) => setJobs((prev) => [...prev, j])} />}
-
-      <LayoutsCard hasSession={sessionKey != null} />
 
       <AccountLine />
       <Footer />
@@ -825,6 +829,49 @@ function HostedLiveCard() {
         Car positions on the map are <b>estimated</b> from lap timing, and there's no live telemetry. Watching on the TV? Use <b>📺 TV delay → Sync to
         TV</b> so the data never gets ahead of the picture; every signed-in screen follows the same delay.
       </div>
+    </section>
+  );
+}
+
+/** A few pointers for getting started, until dismissed. */
+function TipsCard() {
+  const KEY = 'pitwall.tips.v1';
+  const [hidden, setHidden] = useState(() => {
+    try {
+      return localStorage.getItem(KEY) === 'hidden';
+    } catch {
+      return false;
+    }
+  });
+  if (hidden) return null;
+  const hide = () => {
+    setHidden(true);
+    try {
+      localStorage.setItem(KEY, 'hidden');
+    } catch {
+      // ignore
+    }
+  };
+  return (
+    <section className="card tips">
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+        <h2 style={{ margin: 0 }}>Getting started</h2>
+        <span style={{ flex: 1 }} />
+        <button className="icon-btn" onClick={hide}>
+          Got it, hide this
+        </button>
+      </div>
+      <ul>
+        <li>
+          Press <b>Replay</b> next to a race in the calendar to open the pit wall. Space plays and pauses; every window and device you open follows the same clock.
+        </li>
+        <li>
+          <b>☰ All views</b> (top right, on every page) lists everything: the 3D replay, commentary, team radio, the analysis tools, season stats and more.
+        </li>
+        <li>
+          Watching a race later? Turn on <b>🙈 Spoiler-free</b> above the calendar and results stay hidden until you've watched it.
+        </li>
+      </ul>
     </section>
   );
 }

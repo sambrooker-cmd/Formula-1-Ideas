@@ -1,5 +1,6 @@
 // Shared pieces for the season, driver and circuit pages.
 import { SpoilerToggle } from './Spoilers';
+import { AllViewsButton } from './AllViews';
 import { useEffect, useState, type ReactNode } from 'react';
 import { jolpicaProgress, seasonHistory, type SeasonHistory } from '../data/history';
 
@@ -76,6 +77,7 @@ export function DocShell({ children, active }: { children: ReactNode; active?: '
         </nav>
         <span style={{ flex: 1 }} />
         <SpoilerToggle />
+        <AllViewsButton />
         <a className="icon-btn" href="/" style={{ textDecoration: 'none' }}>
           Sessions & layouts
         </a>
