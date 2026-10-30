@@ -3,7 +3,6 @@ import { createRoot } from 'react-dom/client';
 import './styles.css';
 import type { SessionData } from './data/session';
 import { useSessionData, useSynced } from './hooks';
-import { Home } from './components/Home';
 import { PlaybackBar } from './components/PlaybackBar';
 import { TrackMap } from './components/TrackMap';
 import { TimingTower } from './components/TimingTower';
@@ -17,35 +16,42 @@ import { PositionChart, RaceTrace, TyreWear } from './components/RaceCharts';
 import { Tabbed } from './components/Tabbed';
 import { Championship } from './components/Championship';
 import { AlertsHost } from './components/Alerts';
-import { DriverDash } from './components/DriverDash';
-import { TvMode } from './components/TvMode';
 import { SignInGate } from './components/SignInGate';
-import { RaceReport } from './components/RaceReport';
 import { LongRuns } from './components/LongRuns';
-import { Cockpit } from './components/Cockpit';
-import { GhostLap } from './components/GhostLap';
-import { Corners } from './components/Corners';
-import { CleanAirPace, TyreDeg } from './components/RacePace';
-import { StrategySim } from './components/StrategySim';
 import { Battles } from './components/Battles';
-import { Starts } from './components/Starts';
-import { Ratings } from './components/Ratings';
 import { Predictor } from './components/Predictor';
 import { ReplayGate, WatchedMarker } from './components/Spoilers';
 import { Commentary } from './components/Commentary';
 import { TeamRadio } from './components/TeamRadio';
-import { Overtakes } from './components/Overtakes';
-import { StrategyPlanner } from './components/StrategyPlanner';
 import { openMiniWindow, Strip } from './components/Strip';
 
 // three.js is big: only load it when the 3D page is opened.
 const Replay3D = lazy(() => import('./three/Replay3D'));
-import { SeasonStatsPage } from './components/SeasonStats';
-import { DriverSeasonPage } from './components/DriverSeason';
-import { CircuitGuidePage } from './components/CircuitGuide';
-import { CareerH2HPage } from './components/CareerH2H';
-import { PredictionsPage } from './components/Predictions';
-import { OnThisDayPage } from './components/OnThisDay';
+
+// Pages and panels that aren't on the pit wall itself load on demand, so the first screen
+// downloads less (each is its own small file, fetched the first time it's opened).
+const named = <K extends string>(load: () => Promise<Record<K, ComponentType<any>>>, key: K) =>
+  lazy(() => load().then((m) => ({ default: m[key] })));
+const Home = named(() => import('./components/Home'), 'Home');
+const DriverDash = named(() => import('./components/DriverDash'), 'DriverDash');
+const TvMode = named(() => import('./components/TvMode'), 'TvMode');
+const RaceReport = named(() => import('./components/RaceReport'), 'RaceReport');
+const Cockpit = named(() => import('./components/Cockpit'), 'Cockpit');
+const GhostLap = named(() => import('./components/GhostLap'), 'GhostLap');
+const Corners = named(() => import('./components/Corners'), 'Corners');
+const StrategySim = named(() => import('./components/StrategySim'), 'StrategySim');
+const Starts = named(() => import('./components/Starts'), 'Starts');
+const Ratings = named(() => import('./components/Ratings'), 'Ratings');
+const Overtakes = named(() => import('./components/Overtakes'), 'Overtakes');
+const StrategyPlanner = named(() => import('./components/StrategyPlanner'), 'StrategyPlanner');
+const SeasonStatsPage = named(() => import('./components/SeasonStats'), 'SeasonStatsPage');
+const DriverSeasonPage = named(() => import('./components/DriverSeason'), 'DriverSeasonPage');
+const CircuitGuidePage = named(() => import('./components/CircuitGuide'), 'CircuitGuidePage');
+const CareerH2HPage = named(() => import('./components/CareerH2H'), 'CareerH2HPage');
+const PredictionsPage = named(() => import('./components/Predictions'), 'PredictionsPage');
+const OnThisDayPage = named(() => import('./components/OnThisDay'), 'OnThisDayPage');
+const CleanAirPace = named(() => import('./components/RacePace'), 'CleanAirPace');
+const TyreDeg = named(() => import('./components/RacePace'), 'TyreDeg');
 
 type PanelComponent = ComponentType<{ data: SessionData; area?: string }>;
 
@@ -377,7 +383,9 @@ function App() {
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <SignInGate>
-      <App />
+      <Suspense fallback={<div className="center-msg">Loading…</div>}>
+        <App />
+      </Suspense>
     </SignInGate>
   </StrictMode>,
 );

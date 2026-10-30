@@ -1,0 +1,26 @@
+# Checks every change: types, tests and a build. The publish workflow runs the same checks
+# before it deploys, so a broken change never reaches the site.
+name: Check
+
+on:
+  push:
+    branches-ignore: [main]
+  pull_request:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci --no-audit --no-fund
+      - name: Types
+        run: npm run typecheck
+      - name: Tests
+        run: npm test
+      - name: Build (Mac app and hosted site)
+        run: npm run build && VITE_HOSTED=1 npx vite build

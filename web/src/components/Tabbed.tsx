@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from 'react';
+import { Suspense, useState, type ReactNode } from 'react';
 
 export interface Tab {
   id: string;
@@ -34,5 +34,19 @@ export function Tabbed({ storageKey, tabs }: { storageKey: string; tabs: Tab[] }
       ))}
     </span>
   );
-  return <>{(tabs.find((t) => t.id === id) ?? tabs[0]).render(lead)}</>;
+  // Some panels load on demand: keep the tabs on screen while one arrives.
+  return (
+    <Suspense
+      fallback={
+        <div className="center-msg">
+          <div>
+            {lead}
+            <div style={{ marginTop: 10 }}>Loading…</div>
+          </div>
+        </div>
+      }
+    >
+      {(tabs.find((t) => t.id === id) ?? tabs[0]).render(lead)}
+    </Suspense>
+  );
 }

@@ -14,7 +14,8 @@
     "start": "vite build && tsx server/index.ts --production",
     "typecheck": "tsc --noEmit -p tsconfig.json",
     "publish:data": "tsx server/publish.ts",
-    "build:hosted": "VITE_HOSTED=1 vite build && node scripts/copy-site-data.mjs"
+    "build:hosted": "VITE_HOSTED=1 vite build && node scripts/copy-site-data.mjs",
+    "test": "node --import tsx --test tests/*.test.ts"
   },
   "dependencies": {
     "@fastify/static": "^10.1.6",
