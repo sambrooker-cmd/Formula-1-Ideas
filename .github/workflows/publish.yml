@@ -72,6 +72,9 @@ jobs:
       - name: Add new sessions
         id: data
         if: steps.setup.outputs.ready == 'true'
+        # OpenF1 locks out free access during live sessions: a push still deploys, with the races
+        # already published (the next scheduled run adds the new ones).
+        continue-on-error: ${{ github.event_name != 'schedule' }}
         env:
           SEASON: ${{ inputs.season }}
           SESSION_KEYS: ${{ inputs.session_keys }}
